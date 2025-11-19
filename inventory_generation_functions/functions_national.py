@@ -1540,7 +1540,7 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
 
 
 ##########################
-def merge_into_group(footprints_indexed, group, merge_flag, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, crs_plot):
+def merge_into_group(footprints_indexed, group, merge_flag, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, crs_plot): # MTL Added two flags
     """
     Merges a group of overlapping points into a single record, updating occupancy type, residential units, 
     and other attributes. It also checks for size limits and flags the merged record if applicable.
@@ -1557,9 +1557,6 @@ def merge_into_group(footprints_indexed, group, merge_flag, list_columns, sum_co
     4. Calculates the centroid of the group's geometry and prepares the data for merging back into the NSI.
     """
 
-    # Merge occupancy type 
-    group_occ = merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairings, crs_plot)
-    
     # Obtian first row for some simplified calculations 
     data = group.iloc[0].copy()
 
@@ -1567,15 +1564,20 @@ def merge_into_group(footprints_indexed, group, merge_flag, list_columns, sum_co
     additional_rows = group.iloc[1:].copy()
     ids_absorbed = [item for sublist in additional_rows['NSI_ID'] for item in (sublist if isinstance(sublist, list) else [sublist])]
 
-    # Set occupancy information  
-    data['NSI_OC_Update'] = group_occ
+    if use_nsi_occupancy_merge:
+        # Merge occupancy type 
+        group_occ = merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairings, crs_plot)
 
-    # Check how footprint size compares to size limit for specified occupancy to set MergeFlag = 99 flag 
-    footprint_id = int(data['NSI_FootprintID'])
+        # Set occupancy information  
+        data['NSI_OC_Update'] = group_occ
+
     size_flag = 0
-    if footprint_id not in assigned_ids: 
-        footprint_size = footprints_indexed.at[footprint_id, 'Total_SqFt']
-        size_flag = check_size_limit_from_dict(footprint_size, data, size_limit_dict)
+    if use_size_limit:
+        # Check how footprint size compares to size limit for specified occupancy to set MergeFlag = 99 flag 
+        footprint_id = int(data['NSI_FootprintID'])
+        if footprint_id not in assigned_ids: 
+            footprint_size = footprints_indexed.at[footprint_id, 'Total_SqFt']
+            size_flag = check_size_limit_from_dict(footprint_size, data, size_limit_dict)
 
 
     # Assign single value or list to new row based on variability within group for columns that are potentially uncertain/probailistic
@@ -1616,7 +1618,7 @@ def merge_into_group(footprints_indexed, group, merge_flag, list_columns, sum_co
 
 
 ##########################
-def address_overlapping_points(nsi_fxn, footprints, list_columns, sum_columns, manually_assigned_occupancy, print_odd_occupancy_pairings, crs_plot):
+def address_overlapping_points(nsi_fxn, footprints, list_columns, sum_columns, manually_assigned_occupancy, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, crs_plot): # MTL use_size_limit
     """
     FUNCTION WITH MERGEFLAG2: MERGE CASES WITH MULTIPLE POINTS AND ONE FOOTPRINT
     The function evaluates and merges similar points, updates the NSI data, and handles occupancy assignments for overlapping points. 
@@ -1656,8 +1658,10 @@ def address_overlapping_points(nsi_fxn, footprints, list_columns, sum_columns, m
     # Create manually assiged ID list
     assigned_ids = set(manually_assigned_occupancy['FootprintID'])
 
-    # Compute size limit dictionary 
-    size_limit_dict = create_size_limit_dict(nsi_fxn, footprints)
+    # Compute size limit dictionary
+    size_limit_dict = {}
+    if use_size_limit: 
+        size_limit_dict = create_size_limit_dict(nsi_fxn, footprints)
 
     # Index footprints 
     footprints_indexed = footprints.set_index('FootprintID')
@@ -1676,7 +1680,7 @@ def address_overlapping_points(nsi_fxn, footprints, list_columns, sum_columns, m
     for footprint_id, group in nonunique_groups:
 
         # Process Group
-        new_row, ids_absorbed  = merge_into_group(footprints_indexed, group, 2, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, crs_plot)
+        new_row, ids_absorbed  = merge_into_group(footprints_indexed, group, 2, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, crs_plot)
 
         # Set notes for updated row 
         new_row['DistanceToFtpt'] = 0 
@@ -1757,7 +1761,7 @@ def find_index(gdf, nsi_id_to_match):
 
 
 ##########################
-def pair_empty_ftpt_distance(nsi_fxn, footprints_indexed, unpaired_remaining_points, unpaired_remaining_ftpt, current_points, current_polygons, distance_limit, assigned_ids, size_limit_dict, merge_flag):
+def pair_empty_ftpt_distance(nsi_fxn, footprints_indexed, unpaired_remaining_points, unpaired_remaining_ftpt, current_points, current_polygons, distance_limit, assigned_ids, size_limit_dict, use_size_limit, merge_flag):
     """
     Pairs unassigned points with unoccupied building footprints within a specified distance limit. This function iterates through 
     remaining unpaired points, finds the closest footprint within a given distance limit, and updates the NSI dataset 
@@ -1797,10 +1801,11 @@ def pair_empty_ftpt_distance(nsi_fxn, footprints_indexed, unpaired_remaining_poi
 
             # Check footprint flag for updated occupancy type 
             size_limit_flag = 0
-            closest_id = closest_point['ClosestFtpt_ID'].iloc[0]
-            if closest_id not in assigned_ids: 
-                footprint_size = footprints_indexed.at[closest_id, 'Total_SqFt']
-                size_limit_flag = check_size_limit_from_dict(footprint_size, closest_point.iloc[0], size_limit_dict) 
+            if use_size_limit: 
+                closest_id = closest_point['ClosestFtpt_ID'].iloc[0]
+                if closest_id not in assigned_ids: 
+                    footprint_size = footprints_indexed.at[closest_id, 'Total_SqFt']
+                    size_limit_flag = check_size_limit_from_dict(footprint_size, closest_point.iloc[0], size_limit_dict) 
 
             # Find corresponding index in df and set footprint and NumPoints values 
             index_of_match = find_index(nsi_fxn, int(closest_point['NSI_ID'].iloc[0]))
@@ -1834,7 +1839,7 @@ def pair_empty_ftpt_distance(nsi_fxn, footprints_indexed, unpaired_remaining_poi
 
 
 ##########################
-def pair_partial_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, surrounding_blocks, crs_plot):
+def pair_partial_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, geoid, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, surrounding_blocks, crs_plot): # CHANGED GEOID MTL 
     """
     This function works similarly to pair_empty_ftpt_distance. However, in this case, the function is evaluating all footprints that have been designated as "not full," by having 
     their NSI_MergeFlag set as 99.
@@ -1848,7 +1853,7 @@ def pair_partial_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired
 
     # Set polygons based on surrounding_blocks
     if surrounding_blocks:
-        not_full_polygon_adjacent = umpaired_not_full_ftpt[umpaired_not_full_ftpt['CensusBlock'].isin(adjacent_blocks['GEOID10_left'].unique()) | (umpaired_not_full_ftpt['CensusBlock'] == CB_ID)]
+        not_full_polygon_adjacent = umpaired_not_full_ftpt[umpaired_not_full_ftpt['CensusBlock'].isin(adjacent_blocks[str(geoid) + '_left'].unique()) | (umpaired_not_full_ftpt['CensusBlock'] == CB_ID)]
     else:
         not_full_polygon_adjacent = umpaired_not_full_ftpt[umpaired_not_full_ftpt['CensusBlock'] == CB_ID]
     current_polygons_not_full = not_full_polygon_adjacent.copy()      
@@ -1890,7 +1895,7 @@ def pair_partial_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired
                 combined_gdf = pd.concat([curr_nsi, group_aligned], ignore_index=True)
 
                 # Merge to create new row 
-                new_row, ids_absorbed = merge_into_group(footprints_indexed, combined_gdf, merge_flag, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, crs_plot)
+                new_row, ids_absorbed = merge_into_group(footprints_indexed, combined_gdf, merge_flag, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, crs_plot)
 
                 #  Save information for future manipulation 
                 all_new_rows.append(new_row)
@@ -1926,7 +1931,7 @@ def pair_partial_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired
 
 
 ##########################
-def pair_any_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, surrounding_blocks, crs_plot):
+def pair_any_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, geoid, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, surrounding_blocks, crs_plot):
     """
     This function works similarly to pair_empty_ftpt_distance. However, in this case, the function is evaluating all footprints, including empty footprints, footprints with NSI_MergeFlag = 99, 
      and footprints that have been paired.
@@ -1934,7 +1939,7 @@ def pair_any_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_rem
     # Find all footprints within Census block and adjacent Census block 
     # Set polygons based on surrounding_blocks
     if surrounding_blocks:
-        all_ftpt_cb = footprints[footprints['CensusBlock'].isin(adjacent_blocks['GEOID10_left'].unique()) | (footprints['CensusBlock'] == CB_ID)]
+        all_ftpt_cb = footprints[footprints['CensusBlock'].isin(adjacent_blocks[str(geoid) + '_left'].unique()) | (footprints['CensusBlock'] == CB_ID)]
     else:
         all_ftpt_cb = footprints[footprints['CensusBlock'] == CB_ID]
     
@@ -1971,7 +1976,7 @@ def pair_any_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_rem
             combined_gdf = pd.concat([curr_nsi, group_aligned], ignore_index=True)
 
             # Merge to create new row 
-            new_row, ids_absorbed = merge_into_group(footprints_indexed, combined_gdf, merge_flag, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, crs_plot)
+            new_row, ids_absorbed = merge_into_group(footprints_indexed, combined_gdf, merge_flag, list_columns, sum_columns, assigned_ids, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, crs_plot)
 
             # Save information for future manipulation 
             all_new_rows.append(new_row)
@@ -1995,7 +2000,7 @@ def pair_any_ftpt_distance(nsi_fxn, footprints, footprints_indexed, unpaired_rem
 
 ##########################
 
-def distance_limit_merge(CB_list, nsi0, footprints, manually_assigned_occupancy, list_columns, sum_columns, city_blocks, crs_plot, distance_limit, use_surrounding_blocks, use_partial_footprints, use_full_footprints, merge_flag, print_odd_occupancy_pairings):
+def distance_limit_merge(CB_list, nsi0, footprints, geoid, manually_assigned_occupancy, list_columns, sum_columns, city_blocks, crs_plot, distance_limit, use_surrounding_blocks, use_partial_footprints, use_full_footprints, merge_flag, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings): ## MTL ADDED TWO FLAGS 
     """
     This is an overall driver funtion that handles merging data into footprints given a certain distance limit. 
     Inputs: 
@@ -2026,7 +2031,9 @@ def distance_limit_merge(CB_list, nsi0, footprints, manually_assigned_occupancy,
     assigned_ids = set(manually_assigned_occupancy['FootprintID'])
 
     # Compute size limit dictionary 
-    size_limit_dict = create_size_limit_dict(nsi0, footprints)
+    size_limit_dict = {}
+    if use_size_limit:
+        size_limit_dict = create_size_limit_dict(nsi0, footprints)
 
     # Index footprints 
     footprints_indexed = footprints.set_index('FootprintID')
@@ -2044,13 +2051,13 @@ def distance_limit_merge(CB_list, nsi0, footprints, manually_assigned_occupancy,
         CB_ID = CB_list[i]
 
         # Find CBs that are adjacent to current CB 
-        current_block = city_blocks[city_blocks['GEOID10'] == CB_ID]
+        current_block = city_blocks[city_blocks[geoid] == CB_ID]
         adjacent_blocks = gpd.sjoin(city_blocks, current_block, predicate='touches')
 
         # Filter the polygons and points that are in the given CB
         points_CB = unpaired_remaining_points[unpaired_remaining_points['CensusBlock'] == CB_ID]
         if use_surrounding_blocks:
-            polygon_adjacent = unpaired_remaining_ftpt[unpaired_remaining_ftpt['CensusBlock'].isin(adjacent_blocks['GEOID10_left'].unique()) | (unpaired_remaining_ftpt['CensusBlock'] == CB_ID)]
+            polygon_adjacent = unpaired_remaining_ftpt[unpaired_remaining_ftpt['CensusBlock'].isin(adjacent_blocks[str(str(geoid)+'_left')].unique()) | (unpaired_remaining_ftpt['CensusBlock'] == CB_ID)]
         else:
             polygon_adjacent = unpaired_remaining_ftpt[unpaired_remaining_ftpt['CensusBlock'] == CB_ID]
 
@@ -2062,15 +2069,15 @@ def distance_limit_merge(CB_list, nsi0, footprints, manually_assigned_occupancy,
             current_polygons = polygon_adjacent.copy()
 
             # Merge points with any unpaired footprints within the distance limit  
-            nsi0, unpaired_remaining_points, unpaired_remaining_ftpt, current_points, current_polygons = pair_empty_ftpt_distance(nsi0.copy(), footprints_indexed, unpaired_remaining_points, unpaired_remaining_ftpt, current_points, current_polygons, distance_limit, assigned_ids, size_limit_dict, merge_flag)
+            nsi0, unpaired_remaining_points, unpaired_remaining_ftpt, current_points, current_polygons = pair_empty_ftpt_distance(nsi0.copy(), footprints_indexed, unpaired_remaining_points, unpaired_remaining_ftpt, current_points, current_polygons, distance_limit, assigned_ids, use_size_limit, size_limit_dict, merge_flag)
 
             # Merge points with footprints that are larger than their associated occupancy class within the distance limit  
             if len(current_points) and use_partial_footprints:
-                nsi0, unpaired_remaining_points, current_points = pair_partial_ftpt_distance(nsi0.copy(), footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings,adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, use_surrounding_blocks, crs_plot)
+                nsi0, unpaired_remaining_points, current_points = pair_partial_ftpt_distance(nsi0.copy(), footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, geoid, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings,adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, use_surrounding_blocks, crs_plot)
 
             # Merge points with any footprint within distance limit 
             if len(current_points) and use_full_footprints:
-                nsi0, unpaired_remaining_points, current_points = pair_any_ftpt_distance(nsi0.copy(), footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, manually_assigned_occupancy, size_limit_dict, print_odd_occupancy_pairings, adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, use_surrounding_blocks, crs_plot)
+                nsi0, unpaired_remaining_points, current_points = pair_any_ftpt_distance(nsi0.copy(), footprints, footprints_indexed, unpaired_remaining_points, current_points, distance_limit, assigned_ids, geoid, manually_assigned_occupancy, size_limit_dict, use_size_limit, use_nsi_occupancy_merge, print_odd_occupancy_pairings, adjacent_blocks, CB_ID, merge_flag, list_columns, sum_columns, use_surrounding_blocks, crs_plot)
 
         # Print progress checkpoints 
         if counter in progress_checkpoints:
