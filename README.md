@@ -1,5 +1,12 @@
 ## DESCRIPTION
 
+
+
+**NOTE FOR CHRISTIANOS**
+Adam made a bunch of comments in my paper, which led to some code changes. Thus, a lot of this fodler is still in flux. Disregard the description of the five paths and the file organization below - that is no longer going to be the case. For your stuff, start only with the `point_to_ftpt_example` folder. It should be commented decently well, so let me know! Also, I'm going to be actively working out of this repository, just a heads up! 
+
+
+
 This repository contains Python functions for regional building inventory development. The scripts are organized into two main folders:
 
 1. **`inventory_generation_functions`**: This folder contains Python functions used to synthesize inventory data from various sources.
