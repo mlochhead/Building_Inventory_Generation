@@ -410,7 +410,7 @@ def list_nearby_address_ids(gdf, distance=7):
         
         if not nearby_points.empty:
             gdf.at[i, 'Within_Limit'] = True
-            gdf.at[i, 'Nearby_AddressIDs'] = nearby_points['Address_ID'].tolist()
+            gdf.at[i, 'Nearby_AddressIDs'] = nearby_points['POINT_ID'].tolist()
     
     return gdf
 ##########################
@@ -432,7 +432,7 @@ def find_groups(gdf):
     def expand_group(start_row, group_id):
         
         # Initialize the group with the start row's AddressID
-        group = set([start_row['Address_ID']])
+        group = set([start_row['POINT_ID']])
         
         # Keep track of rows that have been added to the group
         rows_to_process = [start_row]
@@ -442,7 +442,7 @@ def find_groups(gdf):
             row = rows_to_process.pop()
             
             # Get the current AddressID and its Nearby_AddressIDs
-            current_address_id = row['Address_ID']
+            current_address_id = row['POINT_ID']
             nearby_ids = row['Nearby_AddressIDs'] if row['Nearby_AddressIDs'] else []
             
             # Loop through nearby AddressIDs and add them to the group if not already included
@@ -451,12 +451,12 @@ def find_groups(gdf):
                     group.add(nearby_id)
                     
                     # Get the corresponding row for the nearby AddressID and add it to processing
-                    nearby_row = gdf[gdf['Address_ID'] == nearby_id].iloc[0]
+                    nearby_row = gdf[gdf['POINT_ID'] == nearby_id].iloc[0]
                     rows_to_process.append(nearby_row)
         
         # Assign the group ID to all rows in the group
         for address_id in group:
-            gdf.loc[gdf['Address_ID'] == address_id, 'GroupID'] = group_id
+            gdf.loc[gdf['POINT_ID'] == address_id, 'GroupID'] = group_id
     
     # Iterate through each row in the GeoDataFrame
     for idx, row in gdf.iterrows():
@@ -673,3 +673,53 @@ def assign_generic_tax_missing(inv_mod, category, possible_vals):
     
     inv_mod.loc[generic_tax_missing_nsi.index, 'OccupancyClass_Best_Source'] = 'Assigned_from_General_Tax'
     return inv_mod
+
+
+
+
+
+
+
+
+##########################
+def tag_ftpt_with_possible_apn(footprints,parcels, lower_bound, upper_bound):
+
+        
+    # Perform spatial join to add APN_PQ from parcels_clean to footprints
+    footprints_with_apn = gpd.sjoin(footprints, parcels[['APN_PQ', 'geometry']], how="left", predicate="intersects")
+
+    # Merge the parcel geometry to the footprints based on the spatial join
+    parcels = parcels.rename(columns={'geometry': 'parcel_geometry'})
+    footprints_with_apn = footprints_with_apn.merge(parcels[['APN_PQ', 'parcel_geometry']], on='APN_PQ')
+
+    # Calculate the area of each footprint
+    footprints_with_apn['footprint_area'] = footprints_with_apn.geometry.area
+
+    # Calculate the intersection area between the footprint and parcel geometries
+    footprints_with_apn['intersection'] = footprints_with_apn.geometry.intersection(footprints_with_apn['parcel_geometry'])
+    footprints_with_apn['intersection_area'] = footprints_with_apn['intersection'].area
+
+    # Calculate the percentage of the footprint that is within the parcel
+    footprints_with_apn['percent_overlap'] = (footprints_with_apn['intersection_area'] / footprints_with_apn['footprint_area']) * 100
+
+    # First, filter out rows where the overlap is less than a given % of the footprint wiht a given parcel 
+    footprints_with_apn_filter = footprints_with_apn[footprints_with_apn['percent_overlap'] >= lower_bound]
+    footprints_with_apn_filter = footprints_with_apn
+
+    # Second, filter rows that have at least a given % of the footprint within a single parcel (drop other parcels associated with that house)
+    ftpt_above = footprints_with_apn_filter[footprints_with_apn_filter['percent_overlap'] >= upper_bound]
+    ftpt_ids_above = list(ftpt_above['FootprintID'].unique())
+    ftpt_below = footprints_with_apn_filter[footprints_with_apn_filter['percent_overlap'] < upper_bound]
+    ftpt_below_reduced = ftpt_below[~ftpt_below['FootprintID'].isin(ftpt_ids_above)]
+
+    # Recombine dataframes 
+    footprints_filtered = pd.concat([ftpt_above, ftpt_below_reduced], axis=0, ignore_index=True)
+
+    # Reset geometry and drop columns 
+    footprints_filtered = footprints_filtered.drop(columns=['intersection', 'footprint_area', 'intersection_area', 'percent_overlap', 'index_right','parcel_geometry'])
+    footprints_filtered.set_geometry('geometry', inplace=True)
+
+    # Remove duplicate rows 
+    footprints_filtered = footprints_filtered.drop_duplicates(keep = 'first')
+
+    return footprints_filtered
