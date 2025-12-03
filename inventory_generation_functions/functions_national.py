@@ -2191,7 +2191,7 @@ def modify_to_single_val_paired(row):
         else:
             return (float('nan'), float('nan'))
     else:
-        clean_list1 = [v for v in col1 if pd.notna(v) and v != 'Missing']
+        clean_list1 = [v for v in col1 if pd.notna(v) and v != 'Missing' and v != 'None']
         if not clean_list1:
             return (float('nan'), float('nan'))
         
