@@ -612,32 +612,32 @@ def clean_supplemental_occ(inv_mod):
     """
 
     # Remove instances where tax and address data both say NOTBLDG
-    inv_mod = inv_mod[~((inv_mod['Tax_UseDescription_NSI_Single'] == 'NOTBLDG') & (inv_mod['Address_FeatureCode_NSI_Single'] == 'NOTBLDG'))]
+    inv_mod = inv_mod[~((inv_mod['Tax_UseDescription_Hazus_Single'] == 'NOTBLDG') & (inv_mod['Address_FeatureCode_Hazus_Single'] == 'NOTBLDG'))]
 
     # Remove cases of buildings that have likely not been constructed (parcel is planned or vacant, no tax year built present in data)
-    inv_mod = inv_mod[~((inv_mod['Tax_UseDescription_NSI_Single'].str.contains('_VAC')) & (inv_mod['Address_FeatureCode_NSI_Single'].str.contains('_VAC')) & (inv_mod['Tax_YearBuilt_Single'].isna()))]
+    inv_mod = inv_mod[~((inv_mod['Tax_UseDescription_Hazus_Single'].str.contains('_VAC')) & (inv_mod['Address_FeatureCode_Hazus_Single'].str.contains('_VAC')) & (inv_mod['YearBuilt_Single'].isna()))]
 
     # Remove cases of buildings that have parcel listed as vacant land and address listed as NOTBLDG or vice versa 
-    inv_mod = inv_mod[~((inv_mod['Tax_UseDescription_NSI_Single'].str.contains('_VAC')) & (inv_mod['Address_FeatureCode_NSI_Single'] == 'NOTBLDG'))]
-    inv_mod = inv_mod[~((inv_mod['Address_FeatureCode_NSI_Single'].str.contains('_VAC')) & (inv_mod['Tax_UseDescription_NSI_Single'] == 'NOTBLDG'))]
+    inv_mod = inv_mod[~((inv_mod['Tax_UseDescription_Hazus_Single'].str.contains('_VAC')) & (inv_mod['Address_FeatureCode_Hazus_Single'] == 'NOTBLDG'))]
+    inv_mod = inv_mod[~((inv_mod['Address_FeatureCode_Hazus_Single'].str.contains('_VAC')) & (inv_mod['Tax_UseDescription_Hazus_Single'] == 'NOTBLDG'))]
 
     # Fill nan with ''
-    inv_mod['Tax_UseDescription_NSI_Single'] = inv_mod['Tax_UseDescription_NSI_Single'].fillna('')
-    inv_mod['Address_FeatureCode_NSI_Single'] = inv_mod['Address_FeatureCode_NSI_Single'].fillna('')
+    inv_mod['Tax_UseDescription_Hazus_Single'] = inv_mod['Tax_UseDescription_Hazus_Single'].fillna('')
+    inv_mod['Address_FeatureCode_Hazus_Single'] = inv_mod['Address_FeatureCode_Hazus_Single'].fillna('')
     if 'NSI_OccupancyClass_Single' in inv_mod.columns:
         inv_mod['NSI_OccupancyClass_Single'] = inv_mod['NSI_OccupancyClass_Single'].fillna('')
 
     # Fill cases of UNK with ''
-    inv_mod['Tax_UseDescription_NSI_Single'] = inv_mod['Tax_UseDescription_NSI_Single'].replace('UNK', '')
-    inv_mod['Address_FeatureCode_NSI_Single'] = inv_mod['Address_FeatureCode_NSI_Single'].replace('UNK', '')
+    inv_mod['Tax_UseDescription_Hazus_Single'] = inv_mod['Tax_UseDescription_Hazus_Single'].replace('UNK', '')
+    inv_mod['Address_FeatureCode_Hazus_Single'] = inv_mod['Address_FeatureCode_Hazus_Single'].replace('UNK', '')
 
     # If tax and parcel disagree over if it is NOTBLDG, fill NOTBLDG with ''
-    inv_mod['Tax_UseDescription_NSI_Single'] = inv_mod['Tax_UseDescription_NSI_Single'].replace('NOTBLDG', '')
-    inv_mod['Address_FeatureCode_NSI_Single'] = inv_mod['Address_FeatureCode_NSI_Single'].replace('NOTBLDG', '')
+    inv_mod['Tax_UseDescription_Hazus_Single'] = inv_mod['Tax_UseDescription_Hazus_Single'].replace('NOTBLDG', '')
+    inv_mod['Address_FeatureCode_Hazus_Single'] = inv_mod['Address_FeatureCode_Hazus_Single'].replace('NOTBLDG', '')
 
     # If tax and parcel disagree over if it is vacant, fill VAC with ''
-    inv_mod.loc[inv_mod['Tax_UseDescription_NSI_Single'].str.contains('_VAC', na=False), 'Tax_UseDescription_NSI_Single'] = ''
-    inv_mod.loc[inv_mod['Address_FeatureCode_NSI_Single'].str.contains('_VAC', na=False), 'Address_FeatureCode_NSI_Single'] = ''
+    inv_mod.loc[inv_mod['Tax_UseDescription_Hazus_Single'].str.contains('_VAC', na=False), 'Tax_UseDescription_Hazus_Single'] = ''
+    inv_mod.loc[inv_mod['Address_FeatureCode_Hazus_Single'].str.contains('_VAC', na=False), 'Address_FeatureCode_Hazus_Single'] = ''
 
     return inv_mod
 ##########################
@@ -654,13 +654,13 @@ def assign_generic_tax_missing(inv_mod, category, possible_vals):
     # Filter rows based on the given category
     if 'NSI_OccupancyClass_Single' in inv_mod.columns:
         generic_tax_missing_nsi = inv_mod[
-            ((inv_mod['Address_FeatureCode_NSI_Single'].isin(category)) & # Address occupancy is generic
-            (inv_mod['Tax_UseDescription_NSI_Single'].isin(category)))&  # Parcel occupancy is generic
+            ((inv_mod['Address_FeatureCode_Hazus_Single'].isin(category)) & # Address occupancy is generic
+            (inv_mod['Tax_UseDescription_Hazus_Single'].isin(category)))&  # Parcel occupancy is generic
             (inv_mod['NSI_OccupancyClass_Single'] == '')]     
     else: 
         generic_tax_missing_nsi = inv_mod[
-        ((inv_mod['Address_FeatureCode_NSI_Single'].isin(category)) & # Address occupancy is generic
-        (inv_mod['Tax_UseDescription_NSI_Single'].isin(category)))]  # Parcel occupancy is generic
+        ((inv_mod['Address_FeatureCode_Hazus_Single'].isin(category)) & # Address occupancy is generic
+        (inv_mod['Tax_UseDescription_Hazus_Single'].isin(category)))]  # Parcel occupancy is generic
     
 
     
