@@ -61,3 +61,20 @@ def make_serializable(value):
         return str(value)
 ##########################
 
+
+
+##########################
+def check_column_assignment(gdf, sum_columns, list_columns, excluded):
+    """
+    This function checks which columns in the given gdf have not been assigned to either sum_columns or list_columns.
+    """     
+    # Print unassigned columns 
+    counter = 0
+    for col in gdf.columns: 
+        if (col not in sum_columns) and (col not in list_columns) and (col not in excluded): 
+            print(col, 'is unassigned')
+            counter += 1
+    if counter == 0: 
+        print('No Unassigned Columns')
+##########################
+
