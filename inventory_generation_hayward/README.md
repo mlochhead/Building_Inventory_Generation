@@ -13,7 +13,7 @@ This folder contains all scripts, input data, and outputs for applying the Inven
 
 ![Jupyter Notebook Organization for Five Inventory Workflows](./readme_figures/script_reorganization.png)
 
-This flowchart should be used as a reference to determine the appropriate order to run the scripts in the repository. For example, if onone is only intersted in the workflow using nationally available data, only the `Inv_Preprocess_Census_and_Footprint.ipynb.ipynb`, `Inv_National_A_Preprocess.ipynb`, `Inv_National_B_Attribute_to_Footprint.ipynb`, and the `Inv_National_CDE_Generate_Inventory.ipynb` scripts are required. The only required input to run the Synthesized National Workflow is a building footprint geojson file. 
+This flowchart should be used as a reference to determine the appropriate order to run the scripts in the repository. For example, if onone is only intersted in the workflow using nationally available data, only the `Inv_Preprocess_Census_and_Footprint.ipynb`, `Inv_National_A_Preprocess.ipynb`, `Inv_National_B_Attribute_to_Footprint.ipynb`, and the `Inv_National_CDE_Generate_Inventory.ipynb` scripts are required. The only required input to run the Synthesized National Workflow is a building footprint geojson file. 
 
 The `hayward_example` folder also contains four subfolders to organize the workflows:  
 
