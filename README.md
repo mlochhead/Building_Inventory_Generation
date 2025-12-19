@@ -13,7 +13,9 @@ This repository is organized into three main folders.
 
 ## INVENTORY SYNTHESIS FRAMEWORK
 
+All scripts in this repository support the Inventory Synthesis Framework from Lochhead et al. (submitted), as shown below.
 
+![Inventory Synthesis Framework](Inventory_Synthesis_Framework.pdf)
 
 
 ## HOW TO RUN
@@ -28,13 +30,13 @@ To begin, create a local directory for the repository, then open a terminal and 
 
 `git clone https://github.com/your-username/your-repository.git`
 
-### Setting Up a Virtual Environment
+### Setting Up a Virtual Environment on macOS/Linux
 
 Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment on macOS, use the following commands. Windows users may need to adjust the setup accordingly. These commands should be executed from the terminal in the directory where the repository has been cloned:
 
 `python3.10 -m venv inventory_env`
 
-`source inventory_env/bin/activate  # On macOS/Linux`
+`source inventory_env/bin/activate`
 
 After activating the virtual environment, install the required dependencies by running:
 
