@@ -1,37 +1,19 @@
 ## DESCRIPTION
 
-This repository contains Python functions to process and synthesize building inventory data for resgional risk assessments. The scripts are organized into several main folders. 
+This repository contains Python functions to process and synthesize building inventory data for resgional risk assessments. This repositry represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (submitted). The preprint for the paper is available here. 
+
+This repository is organized into three main folders. 
 
 1. **`inventory_generation_functions`**: This folder contains Python functions used to process and synthesize inventory data from various sources.
 
-2. **`hayward_example`**: This folder contains scripts, input data, and output data demonstrating the inventory development workflow for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. All scripts in the `hayward_example` folder are set up to run using data from Hayward, CA. However, the Jupyter notebook files could serve as examples for inventory generation elsewhere, particularly for the National Synthesis workflow. Some input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States.
+2. **`hayward_example`**: This folder contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (submitted). However, the Jupyter notebook files could serve as examples for inventory generation elsewhere, particularly for the National Synthesis workflow. Some input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States.
+
+2. **`point_to_footprint_example`**: This folder contains an example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed.
 
 
-Within the `hayward_example` folder, there are five methods for generating building inventories. These methods are as follows:
-
-1. **National Synthesis Workflow**: This method synthesizes inventory data using only nationally available data sources. It is the most generalizable, and the resulting inventory is referred to as the Synthesized National Inventory. This workflow is recommended for future studies that aim to improve existing data without downloading, cleaning, and using local tax data.
-2. **Local Synthesis Worfklow**: This method synthesizes inventory data using only locally obtained data sources from Hayward, CA. While some general approaches to attributing tax parcels and address points to footprints may be applicable elsewhere, the format and content of tax data vary by location. Thus, these scripts would need modification to be used in other areas. The resulting inventory is referred to as the Synthesized Local Inventory.
-3. **Best Estimate Workflow**: This method synthesizes inventory data using both nationally available and locally obtained data sources. The resulting inventory is referred to as the Best Estimate Inventory.
-4. **NSI Point Workflow**: This workflow uses only raw data from the National Structures Inventory (NSI), with minimal modifications other than inferring structure type. The resulting inventory is referred to as the NSI Point Inventory. This approach is simple, but not recommended for future studies due to biases and gaps identified in the 2022 NSI data. 
-5. **NSI Spatial Join Workflow**: This method generates an inventory using NSI points spatially joined (using intersection) with building footprints. Different footprint data sources could be used in this workflow, and the resulting inventory is referred to as the NSI Spatial Join Inventory. Similarly to the NSI Point Workflow, this method is simple, but not recommeded for future studies due to biases and gaps identified in the 2022 NSI data. 
+## INVENTORY SYNTHESIS FRAMEWORK
 
 
-## FILE ORGANIZATION FOR HAYWARD EXAMPLE 
-
-The `hayward_example` folder contains Jupyter notebooks to generate the five inventories described above. The notebooks can be used to run each workflow as follows:
-
-![Jupyter Notebook Organization for Five Inventory Workflows](script_organization.png)
-
-This flowchart should be used as a reference to determine the appropriate order to run the scripts in the repository. For example, if onone is only intersted in the workflow using nationally available data, only the `0_Inventory_Preprocessing.ipynb`, `1_Attribute_to_Ftpt_National.ipynb`, and the `2_InventoryGenerator_National.ipynb` scripts are required, as well as the input data and appropriate python functions. 
-
-The `hayward_example` folder also contains four subfolders to organize the workflows:  
-
-- **`Input_Data`**: Contains all required national and local input data needed to run the scripts in the repository.  
-- **`Inventory_Outputs`**: Stores intermediate outputs for the three more complex workflows: National Synthesis, Local Synthesis, and Best Estimate. Outputs are organized into two subfolders:  
-  - **`FootprintAttribution`**: Contains intermediate outputs related to attributing data to building footprints.  
-  - **`InventoryGeneration`**: Includes intermediate outputs related to prioritizing attributes and filling gaps through inference or imputation.  
-- **`R2D_Analysis`**: Contains finalized inventories from each of the five workflows, results from regional simulations, and the ground motion realizations used to simulate an M7 earthquake on the Hayward Fault.  
-- **`Figures`**: Stores inventory figures generated by `Figures_General.ipynb` and `Figures_Results.ipynb`.  
 
 
 ## HOW TO RUN
