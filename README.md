@@ -1,6 +1,6 @@
 ## DESCRIPTION
 
-This repository contains Python functions to process and synthesize building inventory data for resgional risk assessments. This repositry represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (submitted). The preprint for the paper is available here. 
+This repository contains Python functions to process and synthesize building inventory data for resgional risk assessments. This repositry represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (submitted). The preprint for the paper is available [here](https://doi.org/10.31224/6008).
 
 This repository is organized into three main folders. 
 
@@ -32,7 +32,7 @@ To begin, create a local directory for the repository, then open a terminal and 
 
 ### Setting Up a Virtual Environment on macOS/Linux
 
-Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment on macOS, use the following commands. Windows users may need to adjust the setup accordingly. These commands should be executed from the terminal in the directory where the repository has been cloned:
+Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment, use the following commands. These commands should be executed from the terminal in the directory where the repository has been cloned:
 
 `python3.10 -m venv inventory_env`
 
@@ -45,6 +45,21 @@ After activating the virtual environment, install the required dependencies by r
 Once the environment is set up and activated, you can run the Jupyter notebooks and scripts in this repository.
 
 
+### Setting Up a Virtual Environment on Windows
+
+Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment, use the following commands. These commands should be executed from the terminal in the directory where the repository has been cloned:
+
+`python3.10 -m venv inventory_env`
+
+`inventory_env>\Scripts\activate`
+
+After activating the virtual environment, install the required dependencies by running:
+
+`pip install -r requirements.txt`
+
+Once the environment is set up and activated, you can run the Jupyter notebooks and scripts in this repository.
+
+
 ## LICENSE
 
 This repository is available under the BSD 3-Clause license, see LICENSE.
@@ -52,3 +67,4 @@ This repository is available under the BSD 3-Clause license, see LICENSE.
 ## CONTACT
 
 Meredith (Mia) Lochhead, Stanford University, mlochhea@stanford.edu
+
