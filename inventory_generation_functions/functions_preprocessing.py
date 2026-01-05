@@ -1136,7 +1136,7 @@ def synthesize_gov2_and_HIFLD(nsi, new_gov2, crs_plot, plot_flag, drop_unpaired_
 
 
 ##########################
-def add_nsi_tracking_columns(nsi, filter_under_450):
+def add_nsi_tracking_columns(nsi, filter_limit):
     """
     This function creates new columns to be used to track information in footprint merge process. It also changes data types for missing information within certain rows 
     """
@@ -1170,8 +1170,7 @@ def add_nsi_tracking_columns(nsi, filter_under_450):
     nsi['POINT_DataUpdate'] = nsi['POINT_DataUpdate'].replace({None : ""})
 
     # Filter out NSI points smaller than 450 square feet 
-    if filter_under_450:
-        nsi = nsi[nsi['NSI_TotalAreaSqFt']>=450]
+    nsi = nsi[nsi['NSI_TotalAreaSqFt']>=filter_limit]
 
     return nsi 
 ##########################
