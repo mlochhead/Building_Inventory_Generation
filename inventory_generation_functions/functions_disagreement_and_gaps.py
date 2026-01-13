@@ -766,6 +766,30 @@ def update_res_occ(row):
 
 
 
+##########################
+def reset_very_high_stories_by_units(inv_mod, stories_limit):
+    """
+    This function finds rows that have very high number of stories (user defined as a threshold value of stories_limit). 
+    For those rows, the number of stories is reset based on the number of units and the area of the building footprint 
+    This function aims to address the large overestimation of number of stories that appears in some NSI footprints. This is a 
+    first attempt at addressing these points, and a more sophisticated method should be developed. 
+    """
+
+    ## BASED ON INFORMATIONFROM RENTCAFE, THE AVERAGE APARTMENT SIZE IN CALIFORNIA IS 854 SQ FT (https://www.rentcafe.com/average-rent-market-trends/us/ca/)
+    ## THE EFFICIENCY RATIO (NET LIVEABLE AREA / FOOTPRINT AREA) IS ASSUMED TO BE 0.8
+
+    stories_data = inv_mod.copy()
+
+    # Compute estimated number of stories based on number of units 
+    stories_data['Total_Area_from_Units'] = (stories_data['Units_Best'] * 854) / 0.8
+    stories_data['Stories_from_Units'] = round(stories_data['Total_Area_from_Units']/stories_data['FootprintArea'])
+
+    mask = (stories_data['NSI_NumberOfStories_Single'] > stories_limit)
+    stories_data.loc[mask, 'NSI_NumberOfStories_Single'] = stories_data.loc[mask, 'Stories_from_Units']
+
+    return stories_data['NSI_NumberOfStories_Single']
+##########################
+
 
 
 
@@ -934,6 +958,9 @@ def compute_hazus_replacement_cost(inv_mod, hazus_conversion):
 
     # Append cost info to results
     inv_mod = inv_mod.merge(cost_info, on = 'FootprintID', how = 'left')
+
+    # Scale from structure value to replacement cost (per Hazus manual) 
+    inv_mod['ReplacementCost_Hazus'] = inv_mod['ReplacementCost_Hazus'] * 1.5 
 
     return inv_mod
 ########

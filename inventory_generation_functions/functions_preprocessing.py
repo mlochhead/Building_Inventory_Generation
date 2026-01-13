@@ -325,6 +325,45 @@ def find_components(adjacency):
 
 
 
+##########################
+def download_nsi(city, crs_plot):
+    """
+    Download NSI from API for specified city polygon 
+    """
+    # Specify Bounding Box for NSI Download
+    def geometry_to_bbox_string(geom):
+        minx, miny, maxx, maxy = geom.bounds
+        return f"bbox={minx},{maxy},{maxx},{maxy},{maxx},{miny},{minx},{miny},{minx},{maxy}"
+    bounding_box = city.geometry.apply(geometry_to_bbox_string)[0]
+
+    # Headers for API
+    headers = {'User-Agent': 'Mozilla/5.0'}
+
+    # Retrieve NSI Data
+    url = ("https://nsi.sec.usace.army.mil/nsiapi/structures?" + bounding_box)
+    response = requests.get(url, headers=headers, timeout=30)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        data = response.json()
+    else: 
+        print(f'Error retrieiving NSI data for county')
+
+    # Convert the data to a gdf
+    df = pd.DataFrame(data['features'])
+    geometries = df['geometry'].apply(shape)
+    properties_df = pd.json_normalize(df['properties'])
+    gdf = gpd.GeoDataFrame(properties_df, geometry=geometries, crs="EPSG:4326")
+    gdf = gdf.to_crs(crs_plot).copy()
+
+    if len(gdf) == 0: 
+        print('NO STRUCTURES FOR SPECIFIED AREA')
+
+    # Export
+    os.makedirs(f"./Input_Data/National/", exist_ok=True)
+    gdf.to_file(f"./Input_Data/National/nsi_raw.geojson", driver="GeoJSON")
+    print('NSI Data Exported to ./Input_Data/Nationl/nsi_raw.geojson')
+##########################
 
 
 
