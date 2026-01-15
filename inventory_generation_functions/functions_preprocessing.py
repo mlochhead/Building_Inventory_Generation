@@ -492,7 +492,7 @@ def assign_point_block_and_track(nsi, city_blocks, city_tracts):
 
 
 ##########################
-def format_and_locate_edu1(public, private, city_tracts, city_blocks):
+def format_and_locate_edu1(public, private, city_tracts, city_blocks, cb_id_name): # MTL CHANGE cb_id_name new input
     """
     This function processes public and private school data to assign Census Block and Tract information within a city.
     It formats the school data to match the NSI format and combines public and private schools into a single dataset.
@@ -509,20 +509,20 @@ def format_and_locate_edu1(public, private, city_tracts, city_blocks):
     - school_import: Combined GeoDataFrame of all schools formatted to match NSI.
     """
     # Sort for only schools within city boundaries 
-    public_city = public.sjoin(city_blocks[['GEOID10','geometry']], how='inner')
-    private_city = private.sjoin(city_blocks[['GEOID10','geometry']], how='inner')
+    public_city = public.sjoin(city_blocks[[cb_id_name,'geometry']], how='inner')
+    private_city = private.sjoin(city_blocks[[cb_id_name,'geometry']], how='inner')
 
     # Assign Census Block 
     public_city = public_city.drop(columns = ['index_right'])
-    public_city = public_city.rename(columns={'GEOID10':'CensusBlock'})
+    public_city = public_city.rename(columns={cb_id_name:'CensusBlock'})
     private_city = private_city.drop(columns = ['index_right'])
-    private_city = private_city.rename(columns={'GEOID10':'CensusBlock'})
+    private_city = private_city.rename(columns={cb_id_name:'CensusBlock'})
 
     # Assign Census Tract 
     public_city_copy = public_city.copy().sjoin(city_tracts, how='left')
-    public_city.loc[:, 'CensusTract'] = public_city_copy['GEOID10'].values
+    public_city.loc[:, 'CensusTract'] = public_city_copy[cb_id_name].values
     private_city_copy = private_city.copy().sjoin(city_tracts, how='left')
-    private_city.loc[:, 'CensusTract'] = private_city_copy['GEOID10'].values
+    private_city.loc[:, 'CensusTract'] = private_city_copy[cb_id_name].values
 
     # Drop extraneous columns
     public_city = public_city.drop(columns=['OBJECTID','ADDRESS','CITY','STATE','ZIP','ZIP4','TELEPHONE','WEBSITE',
@@ -740,7 +740,7 @@ def find_gov1_near_hifld(nsi, hifld_occ, buffer):
 
 
 ##########################
-def locate_edu2(univ, univ_pts, city_tracts, city_blocks):
+def locate_edu2(univ, univ_pts, city_tracts, city_blocks, cb_id_name): # MTL CHANGE cb_id_name new input
     """
     This function processes university campus polygons and points, assigning Census Block and Tract information within city boundaries.
 
@@ -755,8 +755,8 @@ def locate_edu2(univ, univ_pts, city_tracts, city_blocks):
     - univ_pts_city: GeoDataFrame of university points with assigned Census Block and Tract information.
     """
     # Sort for only schools within city boundaries 
-    univ_city = univ.sjoin(city_blocks[['GEOID10','geometry']], how='inner')
-    univ_pts_city = univ_pts.sjoin(city_blocks[['GEOID10','geometry']], how='inner')
+    univ_city = univ.sjoin(city_blocks[[cb_id_name,'geometry']], how='inner')
+    univ_pts_city = univ_pts.sjoin(city_blocks[[cb_id_name,'geometry']], how='inner')
 
     # Drop duplicate polygons (based on geometry, total enrollement, and source date being duplicated)
     univ_city = univ_city.drop_duplicates(subset=["geometry", "TOT_ENROLL","SOURCEDATE"])
@@ -766,19 +766,19 @@ def locate_edu2(univ, univ_pts, city_tracts, city_blocks):
 
     # Drop and rename columns for Census Block
     univ_city = univ_city.drop(columns = ['index_right'])
-    univ_city = univ_city.rename(columns={'GEOID10':'CensusBlock'})
+    univ_city = univ_city.rename(columns={cb_id_name:'CensusBlock'})
     univ_pts_city = univ_pts_city.drop(columns = ['index_right'])
-    univ_pts_city = univ_pts_city.rename(columns={'GEOID10':'CensusBlock'})
+    univ_pts_city = univ_pts_city.rename(columns={cb_id_name:'CensusBlock'})
 
     # Assign tract based on Centroid
     univ_city_centroids = univ_city.copy()
     univ_city_centroids.geometry = univ_city.geometry.centroid
     univ_city_centroids = univ_city_centroids.sjoin(city_tracts, how='left')
-    univ_city.loc[:, 'CensusTract'] = univ_city_centroids['GEOID10'].values
+    univ_city.loc[:, 'CensusTract'] = univ_city_centroids[cb_id_name].values
 
     # Assign tract for points 
     univ_pts_city_copy = univ_pts_city.copy().sjoin(city_tracts, how='left')
-    univ_pts_city.loc[:, 'CensusTract'] = univ_pts_city_copy['GEOID10'].values
+    univ_pts_city.loc[:, 'CensusTract'] = univ_pts_city_copy[cb_id_name].values
 
     # Return
     return univ_city, univ_pts_city
@@ -1030,21 +1030,21 @@ def rename_nsi_data(centroids_NSI):
 
 
 ##########################
-def assign_census_hifld(gdf, city_blocks, city_tracts):
+def assign_census_hifld(gdf, city_blocks, city_tracts, cb_id_name): # MTL CHANGE cb_id_name new input
     """
     Assigns Census Block and Tract information to a GeoDataFrame using spatial joins with city blocks and tracts.
     This is used for fire, emergency, and police dataframes, imported from HIFLD. 
     """
     # Spatial join with city boundaries
-    gdf = gdf.sjoin(city_blocks[['GEOID10', 'geometry']], how='inner')
+    gdf = gdf.sjoin(city_blocks[[cb_id_name, 'geometry']], how='inner')
     
     # Drop and rename columns for Census Block
     gdf = gdf.drop(columns=['index_right'])
-    gdf = gdf.rename(columns={'GEOID10': 'CensusBlock'})
+    gdf = gdf.rename(columns={cb_id_name: 'CensusBlock'})
     
     # Assign Census Tract
     gdf_copy = gdf.copy().sjoin(city_tracts, how='left')
-    gdf['CensusTract'] = gdf_copy['GEOID10'].values
+    gdf['CensusTract'] = gdf_copy[cb_id_name].values
     
     return gdf
 ##########################
