@@ -929,7 +929,7 @@ def modulate_weights(weights, structure_types, region, occ, year_class, height, 
 
 
 ############
-def compute_hazus_replacement_cost(inv_mod, hazus_conversion):
+def compute_hazus_replacement_cost(inv_mod, hazus_conversion,include_scaling_for_contents):
     """"
     Compute Hazus replacement cost for each footprint 
     """
@@ -960,7 +960,8 @@ def compute_hazus_replacement_cost(inv_mod, hazus_conversion):
     inv_mod = inv_mod.merge(cost_info, on = 'FootprintID', how = 'left')
 
     # Scale from structure value to replacement cost (per Hazus manual) 
-    inv_mod['ReplacementCost_Hazus'] = inv_mod['ReplacementCost_Hazus'] * 1.5 
+    if include_scaling_for_contents: 
+        inv_mod['ReplacementCost_Hazus'] = inv_mod['ReplacementCost_Hazus'] * 1.5 
 
     return inv_mod
 ########

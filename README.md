@@ -51,7 +51,7 @@ Using a virtual environment is recommended for managing project dependencies. To
 
 `python3.10 -m venv inventory_env`
 
-`inventory_env>\Scripts\activate`
+`inventory_env\Scripts\activate`
 
 After activating the virtual environment, install the required dependencies by running:
 
