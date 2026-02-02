@@ -2,4 +2,6 @@ inventory_env/
 Inventory_Outputs/
 /inventory_generation_hayward/Input_Data/Census/census_api_key.txt
 
-/inventory_generation_hayward_nsi26/Input_Data/National/nsi_2026/
+in_development_inventory_generation_hayward_nsi26/Input_Data/National/nsi_01_09_2026/
+
+in_development_inventory_generation_hayward_nsi26/Input_Data/National/nsi_01_29_2026/
