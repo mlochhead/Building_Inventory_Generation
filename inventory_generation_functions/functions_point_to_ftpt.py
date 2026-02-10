@@ -132,7 +132,7 @@ def update_new_rows(nsi, all_new_rows, expected_length):
     # Update NSI dataframe to reflect merged rows 
     new_rows_df = pd.concat(all_new_rows, ignore_index=True)
 
-    # Remove duplicates based on NSI_ID and keep the one with the maximum NSI_NumPoints
+    # Remove duplicates based on POINT_ID and keep the one with the maximum NSI_NumPoints
     new_rows_df = new_rows_df.loc[new_rows_df.groupby('POINT_ID')['POINT_NumPoints'].idxmax()].reset_index(drop=True)
     
     # Drop and concat points
@@ -193,7 +193,7 @@ def merge_intersecting(points, footprints, crs_plot):
     # See if any point was associated with multiple footprints 
     if unique_points.index.is_unique == False:
         print('ERROR: SINGLE POINT ASSOCIATED WITH MULTIPLE FOOTPRINTS - PLOTTING DUPLICATE IDS AND ASSOCIATED FOOTPRINTS')
-        duplicate = unique_points[unique_points.duplicated(subset='NSI_ID', keep = False)]
+        duplicate = unique_points[unique_points.duplicated(subset='POINT_ID', keep = False)]
         dup_ftpts = footprints[footprints['FootprintID'].isin(duplicate['FootprintID'])]
 
         # Create a base map
@@ -514,7 +514,7 @@ def merge_into_group(footprints_indexed, group, merge_flag, list_columns, sum_co
 
     Outputs:
     - data_gdf: A GeoDataFrame containing the merged group data with updated attributes and centroid geometry.
-    - ids_absorbed: List of NSI_IDs to be removed after merging because points were absorbed into another row 
+    - ids_absorbed: List of POINT_IDs to be removed after merging because points were absorbed into another row 
 
     Process:
     1. Merges occupancy types for the group based on the footprint and manually assigned occupancy rules.
@@ -746,7 +746,7 @@ def pair_empty_ftpt_distance(nsi_fxn, footprints_indexed, unpaired_remaining_poi
     # This while loop pairs points with footprints that have no points yet 
     conitnue_flag = True
 
-    # Ensure all NSI_IDs are integers for lookup process
+    # Ensure all POINT_IDs are integers for lookup process
     nsi_fxn['POINT_ID'] = nsi_fxn['POINT_ID'].astype(int) 
 
     while (len(current_points) > 0) & (len(current_polygons) > 0) & (conitnue_flag): 
