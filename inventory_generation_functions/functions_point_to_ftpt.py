@@ -169,7 +169,7 @@ def find_remaining(points, footprints, point_ftpt_col, point_merge_col):
 
 
 ##########################
-def merge_intersecting(points, footprints, crs_plot):
+def merge_intersecting(points, footprints, crs_plot, plot):
     """
     FUNCTION WITH MERGEFLAG1: MERGE CASES WITH ONE POINT AND ONE FOOTPRINT
 
@@ -193,25 +193,28 @@ def merge_intersecting(points, footprints, crs_plot):
     # See if any point was associated with multiple footprints 
     if unique_points.index.is_unique == False:
         print('ERROR: SINGLE POINT ASSOCIATED WITH MULTIPLE FOOTPRINTS - PLOTTING DUPLICATE IDS AND ASSOCIATED FOOTPRINTS')
-        duplicate = unique_points[unique_points.duplicated(subset='POINT_ID', keep = False)]
-        dup_ftpts = footprints[footprints['FootprintID'].isin(duplicate['FootprintID'])]
+        if plot:
+            duplicate = unique_points[unique_points.duplicated(subset='POINT_ID', keep = False)]
+            dup_ftpts = footprints[footprints['FootprintID'].isin(duplicate['FootprintID'])]
 
-        # Create a base map
-        dup_ftpts_plot = dup_ftpts.copy().to_crs(crs_plot)
-        duplicate_plot = duplicate.copy().to_crs(crs_plot)
-        
-        m = folium.Map(location=[dup_ftpts_plot.geometry.iloc[0].centroid.y, dup_ftpts_plot.geometry.iloc[0].centroid.x], zoom_start=16)
+            # Create a base map
+            dup_ftpts_plot = dup_ftpts.copy().to_crs(crs_plot)
+            duplicate_plot = duplicate.copy().to_crs(crs_plot)
 
-        # Add footprints (polygons)
-        folium.GeoJson(dup_ftpts_plot).add_to(m)
+            m = folium.Map(location=[dup_ftpts_plot.geometry.iloc[0].centroid.y, dup_ftpts_plot.geometry.iloc[0].centroid.x], zoom_start=16)
 
-        for idx, row in duplicate_plot.iterrows():
-            folium.CircleMarker(location=[row.geometry.y, row.geometry.x], 
-                                radius=1, 
-                                color='blue', 
-                                fill=True, 
-                                fill_color='blue',
-                                popup = row['FootprintID']).add_to(m)
+            # Add footprints (polygons)
+            folium.GeoJson(dup_ftpts_plot).add_to(m)
+
+            for idx, row in duplicate_plot.iterrows():
+                folium.CircleMarker(location=[row.geometry.y, row.geometry.x],
+                                    radius=1,
+                                    color='blue',
+                                    fill=True,
+                                    fill_color='blue',
+                                    popup = row['FootprintID']).add_to(m)
+        else:
+            m = "Failed Check: Overlapping footprints found"
         return points, m 
 
     else: 
@@ -313,6 +316,9 @@ def update_mergeflag99(nsi_fxn, footprints, mergeflag):
     Outputs: Entire updated nsi GeoDataFrame with rows marked as POINT_MergeFlag - 99
     """
 
+    # AD: adding this to prevent SettingWithCopyWarning
+    nsi_fxn = nsi_fxn.copy()
+
     size_limit_dict = create_size_limit_dict(nsi_fxn, footprints)
 
     # Convert data to list values for ease of use 
@@ -323,6 +329,15 @@ def update_mergeflag99(nsi_fxn, footprints, mergeflag):
 
     # Find max size, the largest for the list of occupancy classes in list 
     nsi_fxn['max_size'] = nsi_fxn['size_vals'].map(lambda lst: max(lst) if isinstance(lst, list) and len(lst) > 0 else np.nan)
+
+    # AD: Normalize merge key dtypes. POINT_FootprintID is stored as an object,
+    # while FootprintID is int64. Pandas won’t merge on different dtypes, so it throws a ValueError.
+    nsi_fxn["POINT_FootprintID"] = pd.to_numeric(
+        nsi_fxn["POINT_FootprintID"], errors="coerce"
+    ).astype("Int64")
+    footprints["FootprintID"] = pd.to_numeric(
+        footprints["FootprintID"], errors="coerce"
+    ).astype("Int64")
 
     #  Join footprint sizes directly into nsi
     nsi_fxn = nsi_fxn.merge(footprints[['FootprintID', 'Total_SqFt']],how='left',left_on='POINT_FootprintID',right_on='FootprintID')
@@ -442,7 +457,7 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
 
         #### CODE TO PRINT OUT ODD OCCUPANCY PAIRINGS AND THEIR COORDINATES ####
         
-        if print_odd_occupancy_pairings == True:
+        if print_odd_occupancy_pairings:
 
             ## EDUCATIONAL AND INDUSTRIAL POINTS 
             if (occ_class_series.str.contains('EDU').any()) and (occ_class_series.str.contains('IND').any()):
@@ -450,7 +465,8 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
                 df_to_print['coords'] = df_to_print['geometry'].apply(lambda point: (point.y, point.x))
                 df_to_print = df_to_print.drop(columns = ['geometry'])
                 print('WARNING: UNEXPECTED OCCUPANCY COMBINATION - Check Occupancy Type Manually and Assign or Drop (if no action taken, will be kept as mixed use)')
-                display(df_to_print)
+                # AD: display will not work in non-notebook environment. not a good idea to include display in base functions
+                # display(df_to_print)
             
             # RESIDENTIAL AND INDUSTRIAL POINTS (IND6 EXCLUDED -- COMMONLY HAS SAME BID AS  RES1)
             if (occ_class_series.str.contains('RES1|RES2|RES3').any()) and (occ_class_series.str.contains('IND1|IND2|IND3|IND4|IND5').any()):
@@ -458,7 +474,8 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
                 df_to_print['coords'] = df_to_print['geometry'].apply(lambda point: (point.y, point.x))
                 df_to_print = df_to_print.drop(columns = ['geometry'])
                 print('WARNING: UNEXPECTED OCCUPANCY COMBINATION - Check Occupancy Type Manually and Assign or Drop (if no action taken, will be kept as mixed use)')
-                display(df_to_print)
+                # AD: display will not work in non-notebook environment. not a good idea to include display in base functions
+                # display(df_to_print)
 
             # RESIDENTIAL AND GOVERNMENT POINTS 
             if (occ_class_series.str.contains('RES1|RES2|RES3').any()) and (occ_class_series.str.contains('GOV1').any()):
@@ -466,7 +483,8 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
                 df_to_print['coords'] = df_to_print['geometry'].apply(lambda point: (point.y, point.x))
                 df_to_print = df_to_print.drop(columns = ['geometry'])
                 print('WARNING: UNEXPECTED OCCUPANCY COMBINATION - Check Occupancy Type Manually and Assign or Drop (if no action taken, will be kept as mixed use)')
-                display(df_to_print)
+                # AD: display will not work in non-notebook environment. not a good idea to include display in base functions
+                # display(df_to_print)
 
 
 
