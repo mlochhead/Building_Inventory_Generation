@@ -1,7 +1,18 @@
+venv/
 inventory_env/
 Inventory_Outputs/
 /inventory_generation_hayward/Input_Data/Census/census_api_key.txt
+/inventory_generation_city/Input_Data/
+/inventory_generation_city/Output_Data/
+/inventory_generation_city/Inventory_Outputs/
+/inventory_generation_city/Figures/
+/inventory_generation_city/R2D_Analysis/
 
 in_development_inventory_generation_hayward_nsi26/Input_Data/National/nsi_01_09_2026/
 
 in_development_inventory_generation_hayward_nsi26/Input_Data/National/nsi_01_29_2026/
+.idea/
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
+__pycache__/
+**/__pycache__/
