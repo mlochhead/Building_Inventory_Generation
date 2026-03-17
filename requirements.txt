@@ -6,4 +6,5 @@ ipykernel==6.29.5
 contextily==1.6.2
 seaborn==0.13.2
 openpyxl==3.1.5
+notebook==7.5.3
 brails @ git+https://github.com/NHERI-SimCenter/BrailsPlusPlus@c1f7ec7

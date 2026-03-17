@@ -10,12 +10,12 @@ import geopandas as gpd
 import folium
 import matplotlib.pyplot as plt
 import pandas as pd
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, shape
 import requests
 import zipfile
 import io
 from collections import defaultdict
-
+import os
 
 
 
@@ -326,7 +326,7 @@ def find_components(adjacency):
 
 
 ##########################
-def download_nsi(city, crs_plot):
+def download_nsi(city, crs_plot, out_path):
     """
     Download NSI from API for specified city polygon 
     """
@@ -360,9 +360,9 @@ def download_nsi(city, crs_plot):
         print('NO STRUCTURES FOR SPECIFIED AREA')
 
     # Export
-    os.makedirs(f"./Input_Data/National/", exist_ok=True)
-    gdf.to_file(f"./Input_Data/National/nsi_raw.geojson", driver="GeoJSON")
-    print('NSI Data Exported to ./Input_Data/Nationl/nsi_raw.geojson')
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    gdf.to_file(out_path, driver="GeoJSON")
+    print(f'NSI Data Exported to {out_path}')
 ##########################
 
 
@@ -422,7 +422,7 @@ def estimate_ftpt_size_for_merge(footprints, estimate_stories):
 
 
 ##########################
-def assign_point_block_and_track(nsi, city_blocks, city_tracts): 
+def assign_point_block_and_track(nsi, city_blocks, city_tracts, cb_id_name):
     """
     This function assigns Census Block and Tract information to NSI data via spatial joins with city-specific blocks and tracts. 
     It resolves conflicts between pre-existing NSI block assignments and the spatial join to ensure accuracy.
@@ -442,7 +442,7 @@ def assign_point_block_and_track(nsi, city_blocks, city_tracts):
     - nsi: Cleaned GeoDataFrame with accurate Census Block and Tract assignments.
     """
     # Merge NSI data with City-Specific Census Blocks 
-    raw = nsi.sjoin(city_blocks[['GEOID10','geometry']], how='left')
+    raw = nsi.sjoin(city_blocks[[cb_id_name,'geometry']], how='left')
 
     # Post-Process Results 
     # NSI data already has census block infomration assigned, so the following code compares this 
@@ -450,26 +450,26 @@ def assign_point_block_and_track(nsi, city_blocks, city_tracts):
 
     # Select points where the CB doesn't match between NSI and spatial join
     # Note that every other case matches and those are not modified
-    A = raw[~(raw['GEOID10'] == raw['CensusBlock'])]
+    A = raw[~(raw[cb_id_name] == raw['CensusBlock'])]
     print('Points where Census Block Does Not Match between NSI and Spatial Join (Including Outside Study Area):',len(A)) 
 
     # Now select the ones in A where the NSI CensusBlock is an empty string
     # And update the CensusBlock in those with the one based on spatial join
     B = A[(A['CensusBlock']=='')]
     B_complement = A[~(A['CensusBlock']=='')]
-    raw.loc[B.index, 'CensusBlock'] = raw.loc[B.index, 'GEOID10']
+    raw.loc[B.index, 'CensusBlock'] = raw.loc[B.index, cb_id_name]
     print('Points Missing CB in NSI Data  (Filled Using Spatial Join):',len(B))
 
     # Now move on with the ones in A where the NSI CensusBlock was not an empty string
     # And check if any of those NSI CensusBlocks are within the list of considered census blocks
     # For these, we assume that the location in NSI is wrong and the CensusBlock information is right
-    C = B_complement[B_complement['CensusBlock'].isin(city_blocks['GEOID10'].values)]
+    C = B_complement[B_complement['CensusBlock'].isin(city_blocks[cb_id_name].values)]
     print('Conflicting Points within CBs Considered in Study (Assigned via Spatial Join):',len(C))
 
     # What remains is a set with NSI Census blocks that are not among the ones we consider in the study
     # Check that these are indeed not within the space considered in the study
-    C_complement = B_complement[~B_complement['CensusBlock'].isin(city_blocks['GEOID10'].values)]
-    D = C_complement[~pd.isna(C_complement['GEOID10'])]
+    C_complement = B_complement[~B_complement['CensusBlock'].isin(city_blocks[cb_id_name].values)]
+    D = C_complement[~pd.isna(C_complement[cb_id_name])]
 
     if D.shape[0] > 0:
         print(f'WARNING: Some NSI Census block conflicts were not resolved -- {len(D)} points dropped')
@@ -478,13 +478,13 @@ def assign_point_block_and_track(nsi, city_blocks, city_tracts):
     raw = raw.drop(C_complement.index, axis=0)
 
     # if there was no error above, we are done with this check and we can remove the spatially joined columns
-    nsi = raw.drop(['GEOID10'], axis=1)
+    nsi = raw.drop([cb_id_name], axis=1)
 
     # Assign to census tracts
     nsi = nsi.drop(columns = ['index_right'])
     nsi_copy = nsi.copy()
     nsi_copy = nsi_copy.sjoin(city_tracts, how='left')
-    nsi.loc[:, 'CensusTract'] = nsi_copy['GEOID10'].values
+    nsi.loc[:, 'CensusTract'] = nsi_copy[cb_id_name].values
 
     # Return 
     return nsi
@@ -715,207 +715,6 @@ def synthesize_edu1_and_HIFLD(nsi, school_import, crs_plot, plot_flag, drop_unpa
 ##########################
 
 
-
-
-
-
-
-##########################
-def synthesize_edu1_and_HIFLD_nsi26_update(nsi, school_import, drop_unpaired_nsi_edu1, drop_edu1_far_from_hifld, gov1_near_edu1):
-    """
-    This function integrates NSI EDU1 points with HIFLD school data. It identifies NSI points with occupancy class 'EDU1' and spatially joins them with HIFLD school
-    data within a 50-meter radius. Where overlap exists, it prioritizes HIFLD daytime population data and NSI
-    nighttime and over-65 data (which are set to 0 for HIFLD points). Matched points are merged into the HIFLD dataset, and unmatched NSI EDU1 points
-    are flagged for removal. It also removes GOV1 points within 50 meters of any imported EDU1 point to avoid duplication.
-
-    If `plot_flag` is True, a map is generated showing original EDU1 points (black), HIFLD school points (blue), and matched/merged points (red).
-    """
-
-    # Create NSI_MedYearBuilt column if not already present
-    if 'NSI_MedYearBuilt' not in school_import.columns: 
-        school_import['NSI_MedYearBuilt'] = np.nan
-        
-    # Separate NSI EDU1 points 
-    edu1 = nsi[nsi['NSI_OccupancyClass'] == 'EDU1']
-
-    # Drop duplicated columns 
-    edu1 = edu1.drop(columns=['CensusBlock','CensusTract','NSI_OccupancyClass','POINT_DropFlag','POINT_Source'])
-
-    ## Find nearest NSI EDU points to HIFLD EDU points 
-    nsi_edu1_near_hifld = gpd.sjoin_nearest(
-        edu1,
-        school_import,
-        how="inner",
-        max_distance=50, 
-        distance_col="distance",
-        lsuffix="nsi",
-        rsuffix="hifld")
-    
-    # Keep HIFLD pairings with closest NSI EDU1 point
-    nsi_edu1_near_hifld = nsi_edu1_near_hifld.loc[nsi_edu1_near_hifld.groupby('index_hifld')['distance'].idxmin()]
-
-    # Drop duplicates (happens in case of distance being the same for multiple points)
-    nsi_edu1_near_hifld = nsi_edu1_near_hifld.drop_duplicates(subset='index_hifld', keep='first')
-    
-    # Prioritize HIFLD Year Built if specified; otherwise, list NSI year built 
-    nsi_edu1_near_hifld['NSI_MedYearBuilt'] = nsi_edu1_near_hifld['NSI_MedYearBuilt_hifld'].fillna(nsi_edu1_near_hifld['NSI_MedYearBuilt_nsi'])
-    
-    # Prioritize HIFLD Population Data if specified; otherwise, list NSI population for NSI_Population_Day and NSI_PopUnder65_Day
-    nsi_edu1_near_hifld['NSI_Population_Day'] = nsi_edu1_near_hifld['NSI_Population_Day_hifld'].fillna(nsi_edu1_near_hifld['NSI_Population_Day_nsi'])
-    nsi_edu1_near_hifld['NSI_PopUnder65_Day'] = nsi_edu1_near_hifld['NSI_PopUnder65_Day_hifld'].fillna(nsi_edu1_near_hifld['NSI_PopUnder65_Day_nsi'])
-
-    # For nighttime and over 65 day population, prioritize NSI (HIFLD processing sets all of these to zero)
-    for col in ['NSI_PopUnder65_Night','NSI_PopOver65_Night','NSI_Population_Night','NSI_PopOver65_Day']:
-        nsi_edu1_near_hifld[col] = nsi_edu1_near_hifld[col + '_nsi'].fillna(nsi_edu1_near_hifld[col + '_hifld'])
-
-    # Drop additional columns 
-    nsi_edu1_near_hifld = nsi_edu1_near_hifld.drop(columns=['NSI_PopUnder65_Night_nsi',
-                                                'NSI_PopUnder65_Night_hifld',
-                                                'NSI_PopOver65_Night_nsi',
-                                                'NSI_PopOver65_Night_hifld',
-                                                'NSI_Population_Night_nsi',
-                                                'NSI_Population_Night_hifld',
-                                                'NSI_PopOver65_Day_nsi',
-                                                'NSI_PopOver65_Day_hifld',
-                                                'NSI_PopUnder65_Day_nsi',
-                                                'NSI_PopUnder65_Day_hifld',
-                                                'NSI_Population_Day_nsi',
-                                                'NSI_Population_Day_hifld',
-                                                'NSI_MedYearBuilt_nsi',
-                                                'NSI_MedYearBuilt_hifld'
-                                                ])
-
-
-    ## Assemble all HIFLD Data (data with and without NSI agumentation) for merge 
-    nsi_edu1_near_hifld['POINT_DataUpdate']='HIFLD_AND_NSI_EDU'
-    remaining_school_import = school_import[~school_import.index.isin(nsi_edu1_near_hifld['index_hifld'])].copy()
-    remaining_school_import['POINT_DataUpdate']='Only_HIFLD_EDU'
-    school_import_w_nsi = pd.concat([remaining_school_import,nsi_edu1_near_hifld])
-    if len(school_import_w_nsi) != len(school_import):
-        raise ValueError('HIFLD School Data Dropped')
-
-
-    # Mark EDU1 points to be dropped from NSI (data from close points already associated with HIFLD points)
-    edu1_absorbed = nsi[
-        (nsi['NSI_fdid'].isin(nsi_edu1_near_hifld['NSI_fdid'].unique())) & # Not paired with HIFLD data
-        (nsi['NSI_OccupancyClass'] == 'EDU1')].index # Occupancy class is EDU1
-    nsi.loc[edu1_absorbed,'POINT_DropFlag']=1
-    nsi.loc[edu1_absorbed,'POINT_DropNote']='Closest NSI EDU from HIFLD Absorbed by HIFLD'
-
-    # Drop unpaired NSI points if that flag is activated
-    if drop_unpaired_nsi_edu1:
-        edu1_to_drop = nsi[
-            (~nsi['NSI_fdid'].isin(nsi_edu1_near_hifld['NSI_fdid'].unique())) & # Not paired with HIFLD data
-            (nsi['NSI_OccupancyClass'] == 'EDU1')].index # Occupancy class is EDU1
-        nsi.loc[edu1_to_drop,'POINT_DropFlag']=1
-        nsi.loc[edu1_to_drop,'POINT_DropNote']='NSI EDU1 Points not paired with HIFLD Dropped'
-    
-
-    # Merge new HIFLD points into NSI Dataframe 
-    nsi = pd.concat([nsi,school_import_w_nsi])
-    nsi['POINT_NumPoints'] = 1
-
-
-    # Drop NSI EDU points outside of a radius from HIFLD points (MTL new for 2026)
-    if drop_edu1_far_from_hifld:
-         
-            far_pub = find_edu1_far_hifld(nsi.copy(), 'EDU1-PUB', 150).index
-            far_priv = find_edu1_far_hifld(nsi.copy(), 'EDU1-PRIV', 150).index
-            far_both = far_pub.intersection(far_priv)
-
-            nsi.loc[far_both, 'POINT_DropFlag'] = 1
-            nsi.loc[far_both, 'POINT_DropNote'] = 'EDU1 Point more than 100m from any HIFLD School'
-
-
-    # Flag all GOV1 Points within 50m of a newly imported EDU1 point 
-    if gov1_near_edu1 == 'drop':
-
-        gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PUB',150)
-        nsi.loc[gov1_near_edu1.index,'POINT_DropFlag']=1
-        nsi.loc[gov1_near_edu1.index,'POINT_DropNote']='GOV1 Point within 50m of HIFLD School'
-
-        gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PUB',150)
-        nsi.loc[gov1_near_edu1.index,'POINT_DropFlag']=1
-        nsi.loc[gov1_near_edu1.index,'POINT_DropNote']='GOV1 Point within 50m of HIFLD School'
-
-    elif gov1_near_edu1 == 'convert':
-
-        gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PUB',150)
-        nsi.loc[gov1_near_edu1.index,'NSI_OccupancyClass']='EDU1'
-        nsi.loc[gov1_near_edu1.index,'NSI_OC_Update']='EDU1'
-        nsi.loc[gov1_near_edu1.index,'POINT_DataUpdate']='GOV1 converted to EDU1 within 150m of HIFLD School'
-
-        gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PRIV',150)
-        nsi.loc[gov1_near_edu1.index,'NSI_OccupancyClass']='EDU1'
-        nsi.loc[gov1_near_edu1.index,'NSI_OC_Update']='EDU1'
-        nsi.loc[gov1_near_edu1.index,'POINT_DataUpdate']='GOV1 converted to EDU1 within 150m of HIFLD School'
-    
-    elif gov1_near_edu1 == 'keep':
-        pass
-    else: 
-        raise ValueError('Please select "drop", "convert", or "keep" for gov1_near_edu1 flag')
-
-    # Drop additional columns 
-    nsi = nsi.drop(columns=['distance','index_hifld'])
-
-    # Return
-    return nsi 
-##########################
-
-
-
-##########################
-def find_edu1_far_hifld(nsi, hifld_occ, buffer):
-    """
-    Locates EDU1 points outside a specified distance of a specfied occupancy class
-    Input:
-    - nsi: GeoDataFrame with NSI data.
-    Output:
-    - nsi: GeoDataFrame with EDU1 far from specified occupancy class (to be dropped from NSI)
-    """
-    edu1_points = nsi[nsi['NSI_OccupancyClass'] == 'EDU1']
-    hifld_points = nsi[nsi['NSI_OccupancyClass'] == hifld_occ]
-
-    # Create a buffer around HIFLD points
-    hifld_points_buffer = hifld_points.copy()
-    hifld_points_buffer['geometry'] = hifld_points_buffer.geometry.buffer(buffer)
-
-    # Perform a spatial join to find GOV1 points within 100 meters of EDU1-PUB
-    edu1_points_far = gpd.sjoin(edu1_points, hifld_points_buffer, how='left', predicate='within')
-    edu1_points_far = edu1_points_far[edu1_points_far.index_right.isna()]
-
-    # Return
-    return edu1_points_far
-##########################
-
-
-
-##########################
-def find_gov2_far_hifld(nsi, hifld_occ, buffer):
-    """
-    Locates EDU1 points outside a specified distance of a specfied occupancy class
-    Input:
-    - nsi: GeoDataFrame with NSI data.
-    Output:
-    - nsi: GeoDataFrame with EDU1 far from specified occupancy class (to be dropped from NSI)
-    """
-    gov2_points = nsi[nsi['NSI_OccupancyClass'] == 'GOV2']
-    hifld_points = nsi[nsi['NSI_OccupancyClass'] == hifld_occ]
-
-    # Create a buffer around HIFLD points
-    hifld_points_buffer = hifld_points.copy()
-    hifld_points_buffer['geometry'] = hifld_points_buffer.geometry.buffer(buffer)
-
-    # Perform a spatial join to find GOV1 points within 100 meters of EDU1-PUB
-    gov2_points_far = gpd.sjoin(gov2_points, hifld_points_buffer, how='left', predicate='within')
-    gov2_points_far = gov2_points_far[gov2_points_far.index_right.isna()]
-
-    # Return
-    return gov2_points_far
-##########################
-
-
-
 ##########################
 def find_gov1_near_hifld(nsi, hifld_occ, buffer):
     """
@@ -926,7 +725,7 @@ def find_gov1_near_hifld(nsi, hifld_occ, buffer):
     - nsi: GeoDataFrame with GOV1 near specified occupancy class (to be dropped from NSI)
     """
     gov1_points = nsi[nsi['NSI_OccupancyClass'] == 'GOV1']
-    hifld_points = nsi[nsi['NSI_OccupancyClass'].str.contains(hifld_occ)]
+    hifld_points = nsi[nsi['NSI_OccupancyClass'] == hifld_occ]
 
     # Create a buffer around EDU1-PUB points with a radius of 50 meters
     hifld_points_buffer = hifld_points.copy()
@@ -1027,7 +826,6 @@ def prepare_pts_without_campuses(univ_pts_city, univ_city, nsi):
 
     # Add remaining fields for NSI 
     edu2_no_poly['NSI_OccupancyClass'] = 'EDU2'
-    edu2_no_poly['NSI_OC_Update'] = 'EDU2'
     edu2_no_poly['POINT_DropFlag'] = 0
     edu2_no_poly['POINT_Source'] = 'HIFLD'
 
@@ -1056,7 +854,7 @@ def prepare_pts_without_gov1(univ_pts_city, univ_city, nsi):
         - edu2_no_poly: GeoDataFrame with HIFLD points with campus polygons that do not contain any GOV1 points inside the polygon to be merged into NSI
     """
     # Find school polygons that do not have associated GOV1 points  
-    gov1 = nsi[nsi['NSI_OccupancyClass'].isin(['GOV1'])]
+    gov1 = nsi[nsi['NSI_OccupancyClass']=='GOV1']
     polygons_with_nsi = gpd.sjoin(univ_city, gov1, how='inner', predicate='contains')
     polygons_without_nsi = univ_city[~univ_city.index.isin(polygons_with_nsi.index)]
 
@@ -1087,80 +885,12 @@ def prepare_pts_without_gov1(univ_pts_city, univ_city, nsi):
 
     # Add remaining fields for NSI
     edu2_no_poly['NSI_OccupancyClass'] = 'EDU2'
-    edu2_no_poly['NSI_OC_Update'] = 'EDU2'
     edu2_no_poly['POINT_DropFlag'] = 0
     edu2_no_poly['POINT_Source'] = 'HIFLD'
 
     # Return
     return edu2_no_poly 
 ##########################
-
-
-
-
-
-##########################
-def prepare_pts_without_gov1_nsi26_update(univ_pts_city, univ_city, nsi):
-    """
-    This function merges HIFLD school points that contain campus polygons (but have no GOV1 points in the polygons) into the NSI inventory.
-
-    Inputs:
-        - univ_pts_city (GeoDataFrame): School point locations within a city.
-        - univ_city (GeoDataFrame): School building polygons within a city.
-        - nsi (GeoDataFrame
-
-    Process:
-        - Identifies school polygons without GOV1 points.
-        - Finds school points within those polygons.
-        - Prepares and assigns population data based on HAZUS rules (Inventory 6.0).
-        - Adds school points to the NSI inventory as 'EDU2'.
-
-    Returns:
-        - edu2_no_poly: GeoDataFrame with HIFLD points with campus polygons that do not contain any GOV1 points inside the polygon to be merged into NSI
-    """
-    # Find school polygons that do not have associated GOV1 points  
-    gov1_edu1 = nsi[nsi['NSI_OccupancyClass'].isin(['EDU1','GOV1'])]
-    polygons_with_nsi = gpd.sjoin(univ_city, gov1_edu1, how='inner', predicate='contains')
-    polygons_without_nsi = univ_city[~univ_city.index.isin(polygons_with_nsi.index)]
-
-    # Find imported school points in polygons that don't have associated NSI points
-    school_points_without_nsi = univ_pts_city.sjoin(polygons_without_nsi[['UNIQUEID','POPULATION','TOT_ENROLL','TOT_EMP','geometry']], how='inner', predicate='intersects')
-
-    # Drop Columns 
-    school_points_without_nsi = school_points_without_nsi.drop(columns = ['OBJECTID','IPEDSID', 'NAME', 'ADDRESS', 'CITY', 'STATE', 'ZIP',
-                                                        'ZIP4', 'TELEPHONE', 'TYPE', 'STATUS', 'COUNTY','LEVEL_',
-                                                        'COUNTYFIPS', 'COUNTRY', 'LATITUDE', 'LONGITUDE', 'NAICS_CODE',
-                                                        'NAICS_DESC', 'SOURCE', 'SOURCEDATE', 'VAL_METHOD', 'VAL_DATE',
-                                                        'WEBSITE', 'STFIPS', 'COFIPS', 'SECTOR','HI_OFFER', 'DEG_GRANT', 'LOCALE',
-                                                        'CLOSE_DATE', 'MERGE_ID', 'ALIAS', 'SIZE_SET', 'INST_SIZE', 'PT_ENROLL',
-                                                        'FT_ENROLL', 'TOT_ENROLL_left', 'HOUSING', 'DORM_CAP', 'TOT_EMP_left',
-                                                        'SHELTER_ID','index_right', 'UNIQUEID', 'POPULATION_right', 'TOT_ENROLL_right','TOT_EMP_right'])
-
-    # Prepare those points to be added to NSI Data 
-    edu2_no_poly = school_points_without_nsi.copy()
-    edu2_no_poly = edu2_no_poly.drop(columns = 'POPULATION_left')
-
-    # Create population data based on rules from HAZUS 6.0 inventory manual 
-    edu2_no_poly['NSI_PopOver65_Day'] = round(school_points_without_nsi['POPULATION_left']*0.005)
-    edu2_no_poly['NSI_PopUnder65_Day'] = round(school_points_without_nsi['POPULATION_left']*0.995)
-    edu2_no_poly['NSI_Population_Day'] = edu2_no_poly['NSI_PopOver65_Day'] + edu2_no_poly['NSI_PopUnder65_Day']
-    edu2_no_poly['NSI_PopUnder65_Night'] = round(edu2_no_poly['NSI_PopUnder65_Day'] * 0.005)
-    edu2_no_poly['NSI_PopOver65_Night'] = round(edu2_no_poly['NSI_PopOver65_Day'] * 0.005)
-    edu2_no_poly['NSI_Population_Night'] = edu2_no_poly['NSI_PopOver65_Night'] + edu2_no_poly['NSI_PopUnder65_Night'] 
-
-    # Add remaining fields for NSI
-    edu2_no_poly['NSI_OccupancyClass'] = 'EDU2'
-    edu2_no_poly['NSI_OC_Update'] = 'EDU2'
-    edu2_no_poly['POINT_DropFlag'] = 0
-    edu2_no_poly['POINT_Source'] = 'HIFLD'
-
-    # Return
-    return edu2_no_poly 
-##########################
-
-
-
-
 
 
 ##########################
@@ -1187,7 +917,6 @@ def merge_pts_with_campuses(univ_city, nsi, scale_edu2_pop):
 
     # Update Occupancy Class and source for those points
     nsi.loc[gov1_in_polygons, 'NSI_OccupancyClass'] = 'EDU2'
-    nsi.loc[gov1_in_polygons, 'NSI_OC_Update'] = 'EDU2'
     nsi.loc[gov1_in_polygons, 'POINT_DataUpdate'] = 'GOV1 Point within Campus Polyon Convereted to EDU2'
     nsi.loc[gov1_in_polygons, 'POINT_Source'] = 'HIFLD'
 
@@ -1231,86 +960,6 @@ def merge_pts_with_campuses(univ_city, nsi, scale_edu2_pop):
     # Return
     return nsi
 ##########################
-
-
-
-
-
-
-
-##########################
-def merge_pts_with_campuses_nsi26_update(univ_city, nsi, scale_edu2_pop):
-    """
-    Converts GOV1 points within campus polygons into the EDU2 occupancy class and scales population.
-
-    Inputs:
-        - univ_city (GeoDataFrame): School building polygons within a city.
-        - nsi (GeoDataFrame): NSI inventory data.
-
-    Process:
-        - Identifies GOV1 points within campus boundaries and reassigns them to EDU2.
-        - Associates each NSI point with its respective campus polygon.
-        - Scales the population of EDU2 points based on campus population targets.
-        - Resets other population characteristics (day/night populations) for EDU2 points.
-
-    Returns:
-        - nsi (GeoDataFrame): Updated NSI inventory with scaled population and reclassified GOV1 points as EDU2.
-    """
-    # Find NSI GOV1 points within boundaries of campuses  
-    within_polygons = nsi.within(univ_city.unary_union)
-    gov1_edu1_in_polygons = (nsi['NSI_OccupancyClass'].isin(['GOV1','EDU1'])) & within_polygons
-
-    # Update Occupancy Class and source for those points
-    nsi.loc[gov1_edu1_in_polygons, 'NSI_OccupancyClass'] = 'EDU2'
-    nsi.loc[gov1_edu1_in_polygons, 'NSI_OC_Update'] = 'EDU2'
-    nsi.loc[gov1_edu1_in_polygons, 'POINT_DataUpdate'] = 'GOV1 and EDU1 Point within Campus Polyon Convereted to EDU2'
-    nsi.loc[gov1_edu1_in_polygons, 'POINT_Source'] = 'HIFLD'
-    nsi.loc[gov1_edu1_in_polygons, 'POINT_DropFlag'] = 0
-
-    # Scale university population to match HIFLD-specified enrollement: 
-    if scale_edu2_pop: 
-        # Internal function to find campus polygon associated with each row of NSI data
-        def find_polygon_id(row, polygons):
-            matches = polygons[polygons.contains(row.geometry)]
-            if not matches.empty:
-                return matches.index[0]
-            else:
-                return None
-
-        nsi['polygon_id'] = nsi.apply(find_polygon_id, polygons=univ_city, axis=1)
-
-        # Group by polygon and sum the current population of EDU2 points
-        current_population_by_polygon = nsi.groupby('polygon_id')['NSI_Population_Day'].sum()
-
-        # Merge the target population from polygons with the current population
-        population_scaling_factors = univ_city['POPULATION'] / current_population_by_polygon
-
-        # Ensure that the population scaling factors are properly aligned and handle NaN values
-        scaling_factors_mapped = nsi['polygon_id'].map(population_scaling_factors).fillna(1)
-
-        # Scale the population of each EDU2 point
-        nsi.loc[:, 'NSI_Population_Day'] *= scaling_factors_mapped
-
-        # Reset Other Population Characteristics for EDU2 points 
-        nsi = nsi.reset_index(drop=True)
-        edu2_indices = nsi[nsi['NSI_OccupancyClass'] == 'EDU2'].index
-        nsi.loc[edu2_indices, 'NSI_PopUnder65_Day'] = round(nsi.loc[edu2_indices, 'NSI_Population_Day']*0.995)
-        nsi.loc[edu2_indices, 'NSI_PopOver65_Day'] = round(nsi.loc[edu2_indices, 'NSI_Population_Day']*0.005)
-        nsi.loc[edu2_indices, 'NSI_PopUnder65_Night'] = round(nsi.loc[edu2_indices, 'NSI_PopUnder65_Day']*0.005)
-        nsi.loc[edu2_indices, 'NSI_PopOver65_Night'] = round(nsi.loc[edu2_indices, 'NSI_PopOver65_Day']*0.005)
-        nsi.loc[edu2_indices, 'NSI_Population_Night'] = nsi.loc[edu2_indices, 'NSI_PopUnder65_Night'] + nsi.loc[edu2_indices, 'NSI_PopOver65_Night']
-        nsi['NSI_Population_Day'] = nsi['NSI_Population_Day'].round()
-
-        # Drop additional column 
-        nsi = nsi.drop(columns=['polygon_id'])
-
-    # Return
-    return nsi
-##########################
-
-
-
-
 
 
 
@@ -1522,116 +1171,6 @@ def synthesize_gov2_and_HIFLD(nsi, new_gov2, crs_plot, plot_flag, drop_unpaired_
     # Return
     return nsi, m
 ##########################
-
-
-
-
-
-
-##########################
-def synthesize_gov2_and_HIFLD_nsi26_update(nsi, new_gov2, drop_unpaired_nsi_gov2, drop_gov1_near_gov2, gov2_far_from_hifld):
-    """
-    This function integrates NSI EDU1 points with HIFLD government data. It identifies NSI points with occupancy class 'GOV2' and spatially joins them with HIFLD
-    data within a 50-meter radius. Only one NSI point per HIFLD points is paired and vice versa (based on closest point). Matched points are merged into the HIFLD dataset, 
-    and unmatched NSI GOV2 points are flagged for removal. It also removes GOV1 points within 10 meters of any imported GOV2 point to avoid duplication.
-
-    If `plot_flag` is True, a map is generated showing original GOV2 points and HIFLD points 
-    """
-    # Separate out NSI GOV2 points and remove occupancy information (will be replaced with HIFLD)
-    gov2 = nsi[nsi['NSI_OccupancyClass']=='GOV2']
-    gov2 = gov2.drop(columns=['NSI_OccupancyClass','POINT_DropFlag','POINT_Source'])
-
-    # Reset index for merge
-    new_gov2 = new_gov2.reset_index(drop=True)
-
-    ## Find NSI GOV2 points that correspond to HIFLD EDU points 
-    nsi_gov2_near_hifld = gpd.sjoin_nearest(
-        gov2,
-        new_gov2[['NSI_OccupancyClass','geometry']],
-        how="inner",
-        max_distance=50, 
-        distance_col="distance",
-        lsuffix="nsi",
-        rsuffix="hifld")
-
-    # Keep only closest points 
-    nsi_gov2_near_hifld = nsi_gov2_near_hifld.loc[nsi_gov2_near_hifld.groupby('index_hifld')['distance'].idxmin()]
-
-    # Drop duplicates (happens in case of distance being the same for multiple points)
-    nsi_gov2_near_hifld = nsi_gov2_near_hifld.drop_duplicates(subset='index_hifld', keep='first')
-
-    ## Assemble all HIFLD Data (data with and without NSI agumentation) for merge 
-    nsi_gov2_near_hifld['POINT_DataUpdate']='HIFLD_AND_NSI_GOV2'
-    remaining_gov2_import = new_gov2[~new_gov2.index.isin(nsi_gov2_near_hifld['index_hifld'])].copy()
-    remaining_gov2_import['POINT_DataUpdate']='Only_HIFLD_GOV2'
-    gov2_import_w_nsi = pd.concat([remaining_gov2_import,nsi_gov2_near_hifld])
-    gov2_import_w_nsi['POINT_DropFlag'] = 0
-    gov2_import_w_nsi['POINT_Source'] = 'HIFLD'
-    if len(gov2_import_w_nsi) != len(new_gov2):
-        raise ValueError('HIFLD GOV2 Data Dropped')
-
-    # Mark GOV2 points to be dropped from NSI (data from close points already associated with HIFLD points)
-    gov2_absorbed = nsi[
-        (nsi['NSI_fdid'].isin(nsi_gov2_near_hifld['NSI_fdid'].unique())) & # Not paired with HIFLD data
-        (nsi['NSI_OccupancyClass'] == 'GOV2')].index # Occupancy class is EDU1
-    nsi.loc[gov2_absorbed,'POINT_DropFlag']=1
-    nsi.loc[gov2_absorbed,'POINT_DropNote']='NSI GOV2 Points <50m from HIFLD Absorbed by HIFLD'
-
-    if drop_unpaired_nsi_gov2: 
-        gov2_to_drop = nsi[
-            (~nsi['NSI_fdid'].isin(nsi_gov2_near_hifld['NSI_fdid'].unique())) & # Not paired with HIFLD data
-            (nsi['NSI_OccupancyClass'] == 'GOV2')].index # Occupancy class is EDU1
-        nsi.loc[gov2_to_drop,'POINT_DropFlag']=1
-        nsi.loc[gov2_to_drop,'POINT_DropNote']='NSI GOV2 Points >50m from HIFLD or Duplicated Dropped'
-
-
-    # Merge new HIFLD points into NSI Dataframe 
-    nsi = pd.concat([nsi,gov2_import_w_nsi])
-    nsi['POINT_NumPoints'] = 1
-
-    if gov2_far_from_hifld == 'drop': 
-
-            far_fire = find_gov2_far_hifld(nsi.copy(), 'GOV2-FIRE', 50).index
-            far_police = find_gov2_far_hifld(nsi.copy(), 'GOV2-POLICE', 50).index
-            far_ops = find_gov2_far_hifld(nsi.copy(), 'GOV2-OPERATIONS', 50).index
-            far_all = (far_fire.intersection(far_police).intersection(far_ops))
-            nsi.loc[far_all, 'POINT_DropFlag'] = 1
-            nsi.loc[far_all, 'POINT_DropNote'] = 'GOV2 Point more than 100m from any HIFLD GOV2'
-        
-    elif gov2_far_from_hifld == 'convert': 
-
-            far_fire = find_gov2_far_hifld(nsi.copy(), 'GOV2-FIRE', 50).index
-            far_police = find_gov2_far_hifld(nsi.copy(), 'GOV2-POLICE', 50).index
-            far_ops = find_gov2_far_hifld(nsi.copy(), 'GOV2-OPERATIONS', 50).index
-            far_all = (far_fire.intersection(far_police).intersection(far_ops))
-            nsi.loc[far_all, 'NSI_OccupancyClass'] = 'GOV1'
-            nsi.loc[far_all, 'NSI_OC_Update'] = 'GOV1'
-            nsi.loc[far_all, 'POINT_DataUpdate'] = 'GOV2 far from HIFLD converted to GOV1'
-        
-
-    elif gov2_far_from_hifld == 'keep': 
-             pass
-    
-    else: 
-        raise ValueError('Please select "drop", "convert", or "keep" for gov2_far_from_hifld flag')
-
-
-    # Flag all GOV1 Points within 10m of a newly imported GOV2 point 
-    if drop_gov1_near_gov2: 
-        gov1_near_gov2 = find_gov1_near_hifld(nsi.copy(), 'GOV2',10)
-        nsi.loc[gov1_near_gov2.index,'POINT_DropFlag']=1
-        nsi.loc[gov1_near_gov2.index,'POINT_DropNote']='GOV1 Point within 10m of HIFLD GOV2'
-
-
-    # Drop additional columns 
-    nsi = nsi.drop(columns=['distance','index_hifld'])
-
-    # Return
-    return nsi
-##########################
-
-
-
 
 
 

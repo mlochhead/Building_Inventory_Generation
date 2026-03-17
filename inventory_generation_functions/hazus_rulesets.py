@@ -972,6 +972,11 @@ def get_hazus_state_region_mapping():
     # "RegionGroup" See Table A-22 (used for determining structural type from occupancy type)
 
     states_to_region = {
+        "Washington": {
+            "CensusRegion": "West",
+            "CensusDivision": "Pacific",
+            "RegionGroup": "West Coast",
+        },
         "Connecticut": {
             "CensusRegion": "Northeast",
             "CensusDivision": "New England",

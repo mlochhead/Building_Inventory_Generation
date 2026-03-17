@@ -553,7 +553,7 @@ def download_census_data(census_api_key, hayward_blocks20, state_fips, county_fi
     cbs20 = cbs20[cbs20['cb_code'].isin(hayward_blocks20['GEOID20'].unique())]
 
     # Export census data
-    cbs20.to_csv('Input_Data/Census/2020_Census_Units.csv')
+    cbs20.to_csv(f'Input_Data/Census/2020_Census_Units_{state_fips}{county_fips}.csv')
 
     return cbs20
 #########################
