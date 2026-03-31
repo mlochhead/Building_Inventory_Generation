@@ -15,7 +15,7 @@ This repository is organized into three main folders.
 
 All scripts in this repository support the Inventory Synthesis Framework from Lochhead et al. (under review), as shown below.
 
-![Inventory Synthesis Framework](Inventory_Synthesis_Framework.pdf)
+![Inventory Synthesis Framework](Inventory_Synthesis_Framework.png)
 
 
 ## HOW TO RUN
