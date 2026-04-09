@@ -30,9 +30,13 @@ To begin, select a local directory for the repository, then open a terminal and 
 
 `git clone https://github.com/mlochhead/Building_Inventory_Generation.git`
 
+Once cloning is complete, navigate into the repository directory:
+
+`cd Building_Inventory_Generation`
+
 ### Setting Up a Virtual Environment on macOS/Linux
 
-Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment, use the following commands. These commands should be executed from the terminal in the directory where the repository has been cloned:
+Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment, use the following commands. These commands should be executed from the terminal in the repository directory: 
 
 `python3.10 -m venv inventory_env`
 
