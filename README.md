@@ -20,7 +20,7 @@ All scripts in this repository support the Inventory Synthesis Framework from Lo
 
 ## HOW TO RUN
 
-The scripts in this repository require Python 3.10 to run. While scipts may be compatible with other Puthon verisons, compatibility is not guaranteed.
+The scripts in this repository require Python 3.10 to run. While scripts may be compatible with other Puthon verisons, compatibility is not guaranteed.
 
 The following instructions are intended to help new users get started with the scripts. These specific commands are not mandatory, as long as Python 3.10 and the dependencies listed in `requirements.txt` are used. The instructions below represent one way to set up the environment.
 
