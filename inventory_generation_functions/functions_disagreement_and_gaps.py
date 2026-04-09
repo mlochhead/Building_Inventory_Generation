@@ -1403,3 +1403,24 @@ def find_design_level(df, structure_col, year_col, designlevel_col):
     df[designlevel_col] = results
     return df
 #############
+
+
+#############
+def extract_bldg_type(value):
+    """
+    This function updates the building type of each footprint to be consistent with the assigned structure type. 
+    This is expecially important when structure type is decoupled from the original building type, such as the case of the National Synthesis Workflow
+    """
+    if value in ['RM1','RM2','URM']: 
+        return 'M'
+    elif value in ['W1','W2']: 
+        return 'W'
+    elif value in ['S1','S2','S3','S4','S5']:
+        return 'S'
+    elif value in  ['C1','C2','C3','PC1','PC2']:
+        return 'C'
+    elif value in ['MH']:
+        return 'H'
+    else: 
+        return 'ERROR'
+#############
