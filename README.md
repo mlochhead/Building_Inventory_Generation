@@ -20,15 +20,15 @@ All scripts in this repository support the Inventory Synthesis Framework from Lo
 
 ## HOW TO RUN
 
-The scripts in this repository require Python 3.10 to run. While they have been tested with this version, compatibility with other Python versions is not guaranteed.
+The scripts in this repository require Python 3.10 to run. While scipts may be compatible with other Puthon verisons, compatibility is not guaranteed.
 
-The following instructions are intended to help new users get started with the scripts. They are designed for Mac users, but similar steps can be adapted for Windows users. These specific commands are not mandatory, as long as Python 3.10 and the dependencies listed in `requirements.txt` are used. The instructions below represent one way to set up the environment.
+The following instructions are intended to help new users get started with the scripts. These specific commands are not mandatory, as long as Python 3.10 and the dependencies listed in `requirements.txt` are used. The instructions below represent one way to set up the environment.
 
 ### Clone the Repository 
 
-To begin, create a local directory for the repository, then open a terminal and run the following command:
+To begin, select a local directory for the repository, then open a terminal and run the following command:
 
-`git clone https://github.com/your-username/your-repository.git`
+`git clone https://github.com/mlochhead/Building_Inventory_Generation.git`
 
 ### Setting Up a Virtual Environment on macOS/Linux
 
