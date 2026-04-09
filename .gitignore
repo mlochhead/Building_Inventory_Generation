@@ -1,6 +1,6 @@
 inventory_env/
 
-Inventory_Outputs/
+/inventory_generation_hayward/Inventory_Outputs/
 
 /inventory_generation_hayward/Input_Data/Census/census_api_key.txt
 
