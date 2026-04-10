@@ -8,5 +8,7 @@ inventory_env/
 
 /inventory_generation_hayward26/Input_Data/Census/census_api_key.txt
 
+/inventory_generation_hayward26/Input_Data/National/06001.gpkg
+
 .DS_Store
 **/.DS_Store

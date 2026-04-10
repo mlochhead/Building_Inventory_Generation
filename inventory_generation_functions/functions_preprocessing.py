@@ -1467,3 +1467,52 @@ def recombine_dropped_data(nsi0, nsi1, nsi_length):
         raise ValueError('NSI Points Dropped')
     return nsi
 ##########################
+
+
+
+##########################
+def rename_nsi_data26(centroids_NSI):
+
+    nsi = centroids_NSI.copy()
+
+    # Drop unnecessary columns from NSI data
+    nsi.drop(['USASTRUCID','ST_DAMCAT', 'FTPRNTID', 'BSMNT', 'VEHPERUNIT', 'PCTLOWCLR','VAL_VEHIC','CENSREGION','POP_CI95_L','POP_MEDIAN',
+        'POP_CI95_U', 'FLD_ZONE', 'ZONE_SUBTY', 'STATIC_BFE','NOVEHPROB','U65DISABLE','O65DISABLE','DEPRECIATN','HEIGHT', 'X', 'Y'], #SVI
+                        axis=1, inplace=True)
+
+    # Rename columns to more meaningful names
+    nsi = nsi.rename(columns={
+        'FNDTYPE': 'NSI_FoundationType',
+        'FOUND_HT': 'NSI_FoundationHeight',
+        'EXTWALL': 'NSI_BuildingType',
+        'MED_YR_BLT': 'NSI_MedYearBuilt',
+        'CBFIPS2020': 'CensusBlock',
+        'OCCTYPE': 'NSI_OccupancyClass',
+        'NUM_STORY': 'NSI_NumberOfStories',
+        'SOURCE': 'NSI_OrigSource',
+        'FTPRNTSRC': 'NSI_OrigFtptSource',
+        'BID': 'NSI_BID',
+        'SQFT': 'NSI_TotalAreaSqFt',
+        'RESUNITS': 'NSI_Units',
+        'POP2AMU65': 'NSI_PopUnder65_Night',
+        'POP2AMO65': 'NSI_PopOver65_Night',
+        'POP2PMU65': 'NSI_PopUnder65_Day',
+        'POP2PMO65': 'NSI_PopOver65_Day',
+        'VAL_CONT': 'NSI_ContentValue',
+        'VAL_STRUCT': 'NSI_StructureValue',
+        'STUDENTS': 'NSI_Students',
+        'REPLCVALUE': 'NSI_ReplacementCost'})
+    nsi['NSI_Population_Night'] = nsi[['NSI_PopUnder65_Night', 'NSI_PopOver65_Night']].sum(axis=1)
+    nsi['NSI_Population_Day'] = nsi[['NSI_PopUnder65_Day', 'NSI_PopOver65_Day']].sum(axis=1)
+
+
+    # For consistency with 2022, set replacement cost as sum of structure value and content value 
+    print('Original eplacement cost (ten billions):',round(nsi['NSI_ReplacementCost'].sum()/10**9))
+    nsi['NSI_ReplacementCost'] = nsi[['NSI_ContentValue', 'NSI_StructureValue']].sum(axis=1)
+    print('For consistency with 2022, modified replacement cost to be structure + content (ten billions):', round(nsi['NSI_ReplacementCost'].sum()/10**9))
+
+    # Standardize RES1 occupancy Types for consistency with other inventories
+    nsi['NSI_OccupancyClass'] = nsi['NSI_OccupancyClass'].apply(lambda x: 'RES1' if 'RES1' in str(x) else x)
+
+
+    return nsi
