@@ -10,5 +10,18 @@ inventory_env/
 
 /inventory_generation_hayward26/Input_Data/National/06001.gpkg
 
+
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Abrahamson_Silva_Kamai_2014/Output/IMs
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Abrahamson_Silva_Kamai_2014/Output/IMs_ALL
+
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Boore_Stewart_Seyhan_Atkinson_2014/Output/IMs
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Boore_Stewart_Seyhan_Atkinson_2014/Output/IMs_ALL
+
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Campbell_Bozorgnia_2014/Output/IMs
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Campbell_Bozorgnia_2014/Output/IMs_ALL
+
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Chiou_Youngs_2014/Output/IMs
+/inventory_generation_hayward26/R2D_Analysis/Ground_Motions/Chiou_Youngs_2014/Output/IMs_ALL
+
 .DS_Store
 **/.DS_Store
