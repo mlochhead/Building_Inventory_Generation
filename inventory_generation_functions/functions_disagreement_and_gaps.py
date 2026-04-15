@@ -1424,3 +1424,53 @@ def extract_bldg_type(value):
     else: 
         return 'ERROR'
 #############
+
+
+
+
+def resolve_structure_errors(bldg_properties_df, fill_in_error_structure_types):
+    """
+    This function addresses how to handle cases that do not have possible structure types associated with the occupancy / era / region of interest
+    If fill_error_flag is set to true, the function randomly samples from all structure types (excluding URM and MH) to fill in gaps. 
+    If fill_error_flag is set to false, buildings with structure type errors are dropped from the inventory"""
+
+    bldg_properties_df = bldg_properties_df.copy()
+
+    if fill_in_error_structure_types: 
+
+        structure_type_list = ["W1",
+                            "W2",
+                            "S1",
+                            "S2",
+                            "S3",
+                            "S4",
+                            "S5",
+                            "C1",
+                            "C2",
+                            "C3",
+                            "PC1",
+                            "PC2",
+                            "RM1",
+                            "RM2"] # URM, MH 
+
+
+        # Fill in structure type for cases where it is missing due to incompatibilities 
+        missing_mask = (bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType'] == 'na')
+
+        # Sample from above list 
+        n_missing = missing_mask.sum()
+        bldg_properties_df.loc[missing_mask, 'StructureType'] = np.random.choice(
+            structure_type_list, 
+            size=n_missing, 
+            replace=True)
+        
+        print(len(bldg_properties_df[((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType']=='na'))].copy()), 'points dropped due to missing structure type')
+
+
+    else: # Don't fill in missing structure types by random sampling 
+
+        # Drop missing data 
+        print(len(bldg_properties_df[((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType']=='na'))].copy()), 'points dropped due to missing structure type')
+        bldg_properties_df = bldg_properties_df[~((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType']=='na'))].copy()
+
+    return bldg_properties_df

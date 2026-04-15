@@ -1,0 +1,39 @@
+{
+    "Directory": "/Users/mialochhead/Documents/R2D/LocalWorkDir/HazardSimulation/GroundMotions/",
+    "Scenario": {
+        "EqRupture": {
+            "Model": "WGCEP (2007) UCERF2 - Single Branch",
+            "ModelParameters": {
+                "Background Seismicity": "Include",
+                "Floater Type": "Along strike & centered down dip",
+                "Probability Model": "Poisson",
+                "Rupture Offset": 5,
+                "Treat Background Seismicity As": "Point Sources"
+            },
+            "Type": "ERF",
+            "max_Dist": 200,
+            "max_Mag": 10,
+            "min_Mag": 6
+        },
+        "Generator": "Selection",
+        "Type": "Earthquake"
+    },
+    "Site": {
+        "Type": "From_CSV",
+        "Vs30": {
+            "Parameters": {
+                "vsInferred": true
+            },
+            "Type": "Thompson California Vs30 (Thompson et al., 2018)"
+        },
+        "Z1pt0": {
+            "Type": "OpenSHA default model"
+        },
+        "Z2pt5": {
+            "Type": "OpenSHA default model"
+        },
+        "filter": "0-960",
+        "input_file": "/Users/mialochhead/Documents/R2D/LocalWorkDir/HazardSimulation/GroundMotions/Input/SiteFile.csv",
+        "output_file": "SimCenterSiteModel.csv"
+    }
+}

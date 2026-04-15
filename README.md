@@ -1,14 +1,16 @@
 ## DESCRIPTION
 
-This repository contains Python functions to process and synthesize building inventory data for regional risk assessments. This repository represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (under review). The preprint for the paper is available [here](https://doi.org/10.31224/6008).
+This repository contains Python functions to process and synthesize building inventory data for regional risk assessments. This repository represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (in press). The preprint for the paper is available [here](https://doi.org/10.31224/6008).
 
-This repository is organized into three main folders. 
+This repository is organized into several main folders. 
 
-1. **`inventory_generation_functions`**: This folder contains Python functions used to process and synthesize inventory data from various sources.
+1. **`inventory_generation_functions`**: Contains Python functions used to process and synthesize inventory data from various sources.
 
-2. **`inventory_generation_hayward`**: This folder contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (under review). However, the Jupyter notebook files could serve as examples for inventory generation elsewhere, particularly for the National Synthesis workflow. Some input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States.
+2. **`inventory_generation_hayward`**: Contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (in press). However, the Jupyter notebook files could serve as examples for inventory generation elsewhere, particularly for the National Synthesis workflow. Some input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States.
 
-3. **`point_to_footprint_example`**: This folder contains an example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed.
+3. **`inventory_generation_hayward26`** (under development): Adapts the inventory synthesis scripts for the forthcoming 2026 NSI Update using a prerelease of the data. This folder is not intended for external use at this time.
+
+4. **`point_to_footprint_example`**: An example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. 
 
 
 ## INVENTORY SYNTHESIS FRAMEWORK
