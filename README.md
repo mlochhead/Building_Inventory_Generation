@@ -70,6 +70,21 @@ Once the environment is set up and activated, you can run the Jupyter notebooks 
 
 This repository is available under the BSD 3-Clause license, see LICENSE.
 
+## CITATION
+
+If you use this work, please cite:
+
+```bibtex
+@article{lochhead2026exposure,
+  title={Exposure matters: A synthesis framework for high-resolution building inventory development},
+  author={Lochhead, Meredith and Zsarn{\'o}czay, {\'A}d{\'a}m and Deierlein, Gregory G},
+  journal={International Journal of Disaster Risk Reduction},
+  pages={106148},
+  year={2026},
+  publisher={Elsevier}
+}
+```
+
 ## CONTACT
 
 Meredith (Mia) Lochhead, Stanford University, mlochhea@stanford.edu
