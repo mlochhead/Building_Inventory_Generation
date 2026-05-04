@@ -490,15 +490,24 @@ def assign_point_block_and_track(nsi, city_blocks, city_tracts, cb_id_name):
     
     elif cb_id_name == 'GEOID20':
         
-        # # Merge NSI data with City-Specific Census Blocks and check for errors in NSI data
-        nsi = nsi[nsi['CensusBlock'].isin(city_blocks[cb_id_name].to_list())].copy()
+        
+        # Drop 2010 census block assignment
+        nsi = nsi.drop(columns = ['CensusBlock'])
+
+        ## Merge Census Block 
+        nsi = nsi.sjoin(city_blocks[['GEOID20','geometry']], how='left', predicate='within')
+        nsi = nsi.rename(columns={'GEOID20':'CensusBlock'})
+        nsi = nsi.drop(columns = ['index_right'])
 
         ## Merge Census Tract 
-        nsi = nsi.sjoin(city_blocks[[cb_id_name,'geometry']], how='left', predicate='within')
-        nsi = nsi.rename(columns={cb_id_name:'CensusTract'})
+        nsi = nsi.sjoin(city_tracts[['GEOID20','geometry']], how='left', predicate='within')
+        nsi = nsi.rename(columns={'GEOID20':'CensusTract'})
         nsi = nsi.drop(columns = ['index_right'])
-        print('Merged NSI with 2020 Census Data')
 
+        ## Filter for blocks within hayward 
+        nsi = nsi[nsi['CensusBlock'].isin(city_blocks[cb_id_name].to_list())].copy()
+
+        print('Merged NSI with 2020 Census Data')
 
     # Return 
     return nsi
