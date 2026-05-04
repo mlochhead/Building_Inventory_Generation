@@ -1,6 +1,6 @@
 ## DESCRIPTION
 
-This repository contains Python functions to process and synthesize building inventory data for regional risk assessments. This repository represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (2026). The paper is available [here](https://doi.org/10.1016/j.ijdrr.2026.106148).
+This repository contains Python functions to process and synthesize building inventory data for regional risk assessments. This repository represents the code used in the Inventory Synthesis Framework discussed in [Lochhead et al. (2026)](https://doi.org/10.1016/j.ijdrr.2026.106148).
 
 This repository is organized into several main folders. 
 
