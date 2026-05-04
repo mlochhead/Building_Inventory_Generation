@@ -1,0 +1,70 @@
+{
+    "Directory": "/Users/mialochhead/Documents/R2D/LocalWorkDir/HazardSimulation/GroundMotions/",
+    "Event": {
+        "CorrelationModel": {
+            "Type": "Vector"
+        },
+        "Database": "",
+        "GMPE": {
+            "Parameters": {
+            },
+            "Type": "Vector"
+        },
+        "GroundFailure": {
+        },
+        "IntensityMeasure": {
+            "PGA": {
+                "GMPE": "Boore, Stewart, Seyhan & Atkinson (2014)",
+                "InterEventCorr": "Baker & Bradley (2017)",
+                "IntraEventCorr": "Markhvida et al. (2017)",
+                "Period": 0,
+                "Type": "PGA"
+            },
+            "SA": {
+                "GMPE": "Boore, Stewart, Seyhan & Atkinson (2014)",
+                "InterEventCorr": "Baker & Bradley (2017)",
+                "IntraEventCorr": "Markhvida et al. (2017)",
+                "Periods": [
+                    0.25,
+                    0.3,
+                    1
+                ],
+                "Type": "SA"
+            },
+            "Type": "Vector"
+        },
+        "NumberPerSite": 50,
+        "OutputFormat": "SimCenterEvent",
+        "SaveIM": true,
+        "ScalingFactor": {
+            "Maximum": 20,
+            "Minimum": 0.1
+        }
+    },
+    "Scenario": {
+        "EqRupture": {
+            "Model": "WGCEP (2007) UCERF2 - Single Branch",
+            "ModelParameters": {
+                "Background Seismicity": "Include",
+                "Floater Type": "Along strike & centered down dip",
+                "Probability Model": "Poisson",
+                "Rupture Offset": 5,
+                "Treat Background Seismicity As": "Point Sources"
+            },
+            "Type": "ERF",
+            "max_Dist": 200,
+            "max_Mag": 10,
+            "min_Mag": 6
+        },
+        "Generator": {
+            "RuptureIndex": "4",
+            "SourceIndex": "28",
+            "method": "ScenarioSpecific"
+        },
+        "Type": "Earthquake",
+        "sourceFile": "/Users/mialochhead/Documents/R2D/LocalWorkDir/HazardSimulation/GroundMotions/Output/RupFile.geojson"
+    },
+    "Site": {
+        "siteFile": "/Users/mialochhead/Documents/R2D/LocalWorkDir/HazardSimulation/GroundMotions/Input/SimCenterSiteModel.csv"
+    }
+}

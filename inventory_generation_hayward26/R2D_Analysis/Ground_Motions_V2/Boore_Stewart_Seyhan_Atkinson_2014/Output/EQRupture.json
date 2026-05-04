@@ -1,0 +1,14 @@
+{
+    "Model": "WGCEP (2007) UCERF2 - Single Branch",
+    "ModelParameters": {
+        "Background Seismicity": "Include",
+        "Floater Type": "Along strike & centered down dip",
+        "Probability Model": "Poisson",
+        "Rupture Offset": 5,
+        "Treat Background Seismicity As": "Point Sources"
+    },
+    "Type": "ERF",
+    "max_Dist": 200,
+    "max_Mag": 10,
+    "min_Mag": 6
+}
