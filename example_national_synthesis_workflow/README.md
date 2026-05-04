@@ -12,10 +12,12 @@ This method synthesizes nationally-available inventory data to create a single f
 
 #### Running the Workflow
 
-The two Jupyter Notebooks step through all steps described in the ![National Synthesis Workflow](./readme_figures/national_workflow.pdf). 
+The two Jupyter Notebooks step through all steps described in the ![National Synthesis Workflow](national_workflow.pdf). 
 
 - `Inv_Preprocess_Census_and_Footprint.ipynb` should be run first to download census data and format footprint data. 
 - `Inv_Generate_Inventory.ipynb` uses the outputs from the first notebook to generate an inventory. 
 
 This workflow was originally developed using Hayward, CA as a case study. As it is applied in new locations, developers encourage plotting the results of intermediate steps, exploring, and modifying the workflow as appropriate.
+
+Flags to control the merge process are set per recommendations from Lochhead et al. (2026), and can be left as is when applied in new locations. 
 
