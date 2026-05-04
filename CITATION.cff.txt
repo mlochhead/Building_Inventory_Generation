@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the paper below."
+title: "Building_Inventory_Generation"
+authors:
+  - family-names: "Lochhead"
+    given-names: "Meredith"
+date-released: 2026-03-31
+preferred-citation:
+  type: article
+  title: "Exposure matters: A synthesis framework for high-resolution building inventory development"
+  authors:
+    - family-names: "Lochhead"
+      given-names: "Meredith"
+    - family-names: "Zsarnóczay"
+      given-names: "Ádám"
+    - family-names: "Deierlein"
+      given-names: "Gregory G"
+  journal: "International Journal of Disaster Risk Reduction"
+  pages: 106-148
+  year: 2026
+  publisher: "Elsevier"
+  doi: "10.1016/j.ijdrr.2026.106148"
+  url: "https://doi.org/10.1016/j.ijdrr.2026.106148"
