@@ -2,9 +2,20 @@ inventory_env/
 
 /inventory_generation_hayward/Inventory_Outputs/
 
-/inventory_generation_hayward26/Inventory_Outputs/
+/inventory_generation_hayward/Input_Data/Census/census_api_key.txt
+
+/example_national_synthesis_workflow/Inventory_Outputs/
+
+/example_national_synthesis_workflow/Input_Data/Census/census_api_key.txt
+
+
 
 /inventory_generation_hayward/Input_Data/Census/census_api_key.txt
+
+
+
+
+/inventory_generation_hayward26/Inventory_Outputs/
 
 /inventory_generation_hayward26/Input_Data/Census/census_api_key.txt
 

@@ -441,50 +441,64 @@ def assign_point_block_and_track(nsi, city_blocks, city_tracts, cb_id_name):
     Output:
     - nsi: Cleaned GeoDataFrame with accurate Census Block and Tract assignments.
     """
-    # Merge NSI data with City-Specific Census Blocks 
-    raw = nsi.sjoin(city_blocks[[cb_id_name,'geometry']], how='left')
 
-    # Post-Process Results 
-    # NSI data already has census block infomration assigned, so the following code compares this 
-    # information with the spatially joined census blocks
+    if cb_id_name == 'GEOID10':
+        # Merge NSI data with City-Specific Census Blocks 
+        raw = nsi.sjoin(city_blocks[[cb_id_name,'geometry']], how='left')
 
-    # Select points where the CB doesn't match between NSI and spatial join
-    # Note that every other case matches and those are not modified
-    A = raw[~(raw[cb_id_name] == raw['CensusBlock'])]
-    print('Points where Census Block Does Not Match between NSI and Spatial Join (Including Outside Study Area):',len(A)) 
+        # Post-Process Results 
+        # NSI data already has census block infomration assigned, so the following code compares this 
+        # information with the spatially joined census blocks
 
-    # Now select the ones in A where the NSI CensusBlock is an empty string
-    # And update the CensusBlock in those with the one based on spatial join
-    B = A[(A['CensusBlock']=='')]
-    B_complement = A[~(A['CensusBlock']=='')]
-    raw.loc[B.index, 'CensusBlock'] = raw.loc[B.index, cb_id_name]
-    print('Points Missing CB in NSI Data  (Filled Using Spatial Join):',len(B))
+        # Select points where the CB doesn't match between NSI and spatial join
+        # Note that every other case matches and those are not modified
+        A = raw[~(raw[cb_id_name] == raw['CensusBlock'])]
+        print('Points where Census Block Does Not Match between NSI and Spatial Join (Including Outside Study Area):',len(A)) 
 
-    # Now move on with the ones in A where the NSI CensusBlock was not an empty string
-    # And check if any of those NSI CensusBlocks are within the list of considered census blocks
-    # For these, we assume that the location in NSI is wrong and the CensusBlock information is right
-    C = B_complement[B_complement['CensusBlock'].isin(city_blocks[cb_id_name].values)]
-    print('Conflicting Points within CBs Considered in Study (Assigned via Spatial Join):',len(C))
+        # Now select the ones in A where the NSI CensusBlock is an empty string
+        # And update the CensusBlock in those with the one based on spatial join
+        B = A[(A['CensusBlock']=='')]
+        B_complement = A[~(A['CensusBlock']=='')]
+        raw.loc[B.index, 'CensusBlock'] = raw.loc[B.index, cb_id_name]
+        print('Points Missing CB in NSI Data  (Filled Using Spatial Join):',len(B))
 
-    # What remains is a set with NSI Census blocks that are not among the ones we consider in the study
-    # Check that these are indeed not within the space considered in the study
-    C_complement = B_complement[~B_complement['CensusBlock'].isin(city_blocks[cb_id_name].values)]
-    D = C_complement[~pd.isna(C_complement[cb_id_name])]
+        # Now move on with the ones in A where the NSI CensusBlock was not an empty string
+        # And check if any of those NSI CensusBlocks are within the list of considered census blocks
+        # For these, we assume that the location in NSI is wrong and the CensusBlock information is right
+        C = B_complement[B_complement['CensusBlock'].isin(city_blocks[cb_id_name].values)]
+        print('Conflicting Points within CBs Considered in Study (Assigned via Spatial Join):',len(C))
 
-    if D.shape[0] > 0:
-        print(f'WARNING: Some NSI Census block conflicts were not resolved -- {len(D)} points dropped')
+        # What remains is a set with NSI Census blocks that are not among the ones we consider in the study
+        # Check that these are indeed not within the space considered in the study
+        C_complement = B_complement[~B_complement['CensusBlock'].isin(city_blocks[cb_id_name].values)]
+        D = C_complement[~pd.isna(C_complement[cb_id_name])]
+
+        if D.shape[0] > 0:
+            print(f'WARNING: Some NSI Census block conflicts were not resolved -- {len(D)} points dropped')
+            
+        # Remove the centroids that are not within the space considered in the study
+        raw = raw.drop(C_complement.index, axis=0)
+
+        # if there was no error above, we are done with this check and we can remove the spatially joined columns
+        nsi = raw.drop([cb_id_name], axis=1)
+
+        # Assign to census tracts
+        nsi = nsi.drop(columns = ['index_right'])
+        nsi_copy = nsi.copy()
+        nsi_copy = nsi_copy.sjoin(city_tracts, how='left')
+        nsi.loc[:, 'CensusTract'] = nsi_copy[cb_id_name].values
+    
+    elif cb_id_name == 'GEOID20':
         
-    # Remove the centroids that are not within the space considered in the study
-    raw = raw.drop(C_complement.index, axis=0)
+        # # Merge NSI data with City-Specific Census Blocks and check for errors in NSI data
+        nsi = nsi[nsi['CensusBlock'].isin(city_blocks[cb_id_name].to_list())].copy()
 
-    # if there was no error above, we are done with this check and we can remove the spatially joined columns
-    nsi = raw.drop([cb_id_name], axis=1)
+        ## Merge Census Tract 
+        nsi = nsi.sjoin(city_blocks[[cb_id_name,'geometry']], how='left', predicate='within')
+        nsi = nsi.rename(columns={cb_id_name:'CensusTract'})
+        nsi = nsi.drop(columns = ['index_right'])
+        print('Merged NSI with 2020 Census Data')
 
-    # Assign to census tracts
-    nsi = nsi.drop(columns = ['index_right'])
-    nsi_copy = nsi.copy()
-    nsi_copy = nsi_copy.sjoin(city_tracts, how='left')
-    nsi.loc[:, 'CensusTract'] = nsi_copy[cb_id_name].values
 
     # Return 
     return nsi
