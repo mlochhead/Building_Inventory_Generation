@@ -1394,8 +1394,9 @@ def merge_duplicate_bid(nsi, list_columns, sum_columns):
                 # For other points in group that are not the first row, record those has having been merged into another row 
                 ids_absorbed = list(group.iloc[1:]['POINT_ID'].values)
 
-                # Set occupancy information  
+                # Set occupancy information 
                 data['NSI_OC_Update'] = group_occ
+                data['POINT_NumPoints'] = len(group)
 
                 # List columns
                 for col in list_columns:
