@@ -894,6 +894,34 @@ def simplify_occ(s):
 
 
 
+###### VERSION THAT SIMPLIFIES TO PELICUN-READY OCCUPANCY
+def simplify_occ_to_r2d(value):
+    if 'RES1' in value:
+        return 'RES1'
+    elif 'RES2' in value:
+        return 'RES2'
+    elif 'RES3' in value:
+        return 'RES3'
+    elif 'RES4' in value:
+        return 'RES4'
+    elif 'RES5' in value:
+        return 'RES5'
+    elif 'RES6' in value:
+        return 'RES6'
+    elif 'GOV2' in value:
+        return 'GOV2'
+    elif 'EDU1' in value:
+        return 'EDU1'
+    elif 'EDU2' in value:
+        return 'EDU2'
+    else:
+        return value
+    
+########
+
+
+
+
 ###### CREATED NEW VERSION OF MODULATE_WEIGHTS -- TAKEN FROM BRAILS++ CODE 
 def modulate_weights(weights, structure_types, region, occ, year_class, height, allow_mh_only_for_res2, no_urm):
 
