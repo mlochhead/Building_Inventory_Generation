@@ -19,6 +19,3 @@ for city in cities:
         census_year=census_year,
         mh_hifld_path=mh_hifld_path,
     )
-    city.generate_inventory_fields(
-        census_api_key_path=inp_dir / "Census" / "census_api_key.txt",
-    )
