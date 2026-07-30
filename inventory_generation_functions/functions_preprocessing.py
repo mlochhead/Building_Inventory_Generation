@@ -1028,6 +1028,89 @@ def rename_nsi_data(centroids_NSI):
 ##########################
 
 
+##########################
+# AD (Angshuman Deb, adeb@degenkolb.com) -- added 2026-07-30
+#
+# NSI 2026 importer for the LIVE API.
+# The USACE NSI API (https://nsi.sec.usace.army.mil/nsiapi/structures) now serves the
+# updated 2026 data. Its JSON schema is still lowercase, but a few fields changed relative
+# to the 2022 data that rename_nsi_data() targets -- most importantly 'ground_elv_m' is now
+# 'grnd_elv_m', which makes rename_nsi_data()'s fixed drop-list raise
+#   KeyError: "['ground_elv_m'] not found in axis".
+# (Note: this is a DIFFERENT source than Mia's rename_nsi_data26(), which expects the
+#  UPPERCASE field names of the downloaded NSI geodatabase, not the lowercase API JSON.)
+#
+# Rather than maintain a brittle drop-list, this importer maps the fields the National
+# workflow needs to the internal NSI_* schema and then keeps ONLY those columns, so it is
+# robust to any additional/renamed fields the API introduces later. The output columns are
+# identical to rename_nsi_data(), so the rest of the workflow is unaffected.
+# Verified against the live API (San Francisco sample) on 2026-07-30.
+def rename_nsi_data_2026(centroids_NSI):
+    """
+    Clean and rename LIVE NSI API (2026) data to the internal NSI_* schema.
+
+    Input:
+    - centroids_NSI: GeoDataFrame built from the NSI API response (lowercase field names).
+
+    Returns:
+    - nsi: GeoDataFrame containing only the internal NSI_* fields needed downstream,
+      identical in columns to rename_nsi_data().
+    """
+    nsi = centroids_NSI.copy()
+
+    # Make the importer case-insensitive: the live API returns lowercase, but normalize
+    # in case a differently-cased NSI export is passed in.
+    nsi.columns = [c if c == 'geometry' else str(c).lower() for c in nsi.columns]
+
+    # Map raw NSI fields -> internal NSI_* names
+    rename_map = {
+        'found_type': 'NSI_FoundationType',
+        'found_ht':   'NSI_FoundationHeight',
+        'bldgtype':   'NSI_BuildingType',
+        'med_yr_blt': 'NSI_MedYearBuilt',
+        'cbfips':     'CensusBlock',
+        'occtype':    'NSI_OccupancyClass',
+        'num_story':  'NSI_NumberOfStories',
+        'source':     'NSI_OrigSource',
+        'ftprntsrc':  'NSI_OrigFtptSource',
+        'bid':        'NSI_BID',
+        'sqft':       'NSI_TotalAreaSqFt',
+        'val_cont':   'NSI_ContentValue',
+        'val_struct': 'NSI_StructureValue',
+        'pop2amo65':  'NSI_PopOver65_Night',
+        'pop2amu65':  'NSI_PopUnder65_Night',
+        'pop2pmo65':  'NSI_PopOver65_Day',
+        'pop2pmu65':  'NSI_PopUnder65_Day',
+        'fd_id':      'NSI_fdid',
+    }
+
+    # Fail loudly (and usefully) if the API schema drops a field we depend on
+    missing = [c for c in rename_map if c not in nsi.columns]
+    if missing:
+        raise KeyError(
+            f'NSI 2026 data is missing expected field(s): {missing}. '
+            f'Available fields: {sorted(c for c in nsi.columns if c != "geometry")}'
+        )
+    nsi = nsi.rename(columns=rename_map)
+
+    # Derive total populations and replacement cost (same conventions as rename_nsi_data)
+    nsi['NSI_Population_Night'] = nsi[['NSI_PopUnder65_Night', 'NSI_PopOver65_Night']].sum(axis=1)
+    nsi['NSI_Population_Day'] = nsi[['NSI_PopUnder65_Day', 'NSI_PopOver65_Day']].sum(axis=1)
+    nsi['NSI_ReplacementCost'] = nsi[['NSI_StructureValue', 'NSI_ContentValue']].sum(axis=1)
+
+    # Keep only what the workflow needs (robust to any extra/new API fields)
+    keep = ['NSI_FoundationType', 'NSI_FoundationHeight', 'NSI_BuildingType', 'NSI_MedYearBuilt',
+            'NSI_fdid', 'CensusBlock', 'NSI_OccupancyClass', 'NSI_NumberOfStories', 'NSI_OrigSource',
+            'NSI_OrigFtptSource', 'NSI_BID', 'NSI_TotalAreaSqFt',
+            'NSI_PopOver65_Night', 'NSI_PopUnder65_Night', 'NSI_Population_Night',
+            'NSI_PopOver65_Day', 'NSI_PopUnder65_Day', 'NSI_Population_Day',
+            'NSI_ContentValue', 'NSI_StructureValue', 'NSI_ReplacementCost', 'geometry']
+    nsi = nsi[keep]
+
+    return nsi
+##########################
+
+
 
 ##########################
 def assign_census_hifld(gdf, city_blocks, city_tracts, cb_id_name): # MTL CHANGE cb_id_name new input
@@ -1371,8 +1454,9 @@ def merge_duplicate_bid(nsi, list_columns, sum_columns):
                 # For other points in group that are not the first row, record those has having been merged into another row 
                 ids_absorbed = list(group.iloc[1:]['POINT_ID'].values)
 
-                # Set occupancy information  
+                # Set occupancy information
                 data['NSI_OC_Update'] = group_occ
+                data['POINT_NumPoints'] = len(group)
 
                 # List columns
                 for col in list_columns:

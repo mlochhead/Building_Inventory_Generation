@@ -35,13 +35,16 @@ class City:
     excluded = ['geometry', 'CensusBlock', 'CensusTract', 'POINT_ID', 'NSI_OccupancyClass', 'POINT_DropFlag',
                 'POINT_DropNote', 'NSI_OC_Update',
                 'POINT_FootprintID', 'DistanceToFtpt', 'ClosestFtpt_ID', 'POINT_MergeFlag', 'POINT_DataUpdate']
+    # NSI_TotalAreaSqFt is a SUM column (upstream change): when multiple points merge into one
+    # footprint, total area should be summed rather than reduced to a single representative value.
     sum_columns = ['NSI_PopOver65_Day', 'NSI_PopUnder65_Day', 'NSI_Population_Day',
                    'NSI_PopOver65_Night', 'NSI_PopUnder65_Night', 'NSI_Population_Night', 'NSI_ContentValue',
                    'NSI_ReplacementCost',
-                   'NSI_StructureValue', 'NSI_MinResUnits', 'NSI_MaxResUnits', 'POINT_NumPoints']
+                   'NSI_StructureValue', 'NSI_MinResUnits', 'NSI_MaxResUnits', 'POINT_NumPoints',
+                   'NSI_TotalAreaSqFt']
     list_columns = ['NSI_FoundationType', 'NSI_FoundationHeight', 'NSI_BuildingType', 'NSI_MedYearBuilt',
                     'NSI_NumberOfStories', 'POINT_Source', 'NSI_OrigSource', 'NSI_OrigFtptSource', 'NSI_BID',
-                    'POINT_ID_List', 'NSI_TotalAreaSqFt']
+                    'POINT_ID_List']
 
     def __init__(self, city_name: str, state_name: str, state_abbrev: str, state_fips: str, county_name: str, county_fips: str, xbounds: tuple[float, float], ybounds: tuple[float, float], stories_limit: int):
         self.city_name = city_name
@@ -231,7 +234,10 @@ class City:
     ) -> None:
         nsi = gpd.read_file(self.nsi_raw_path())
         nsi = nsi.to_crs(crs=f"EPSG:{int(self.crs_main)}")
-        nsi = pre.rename_nsi_data(nsi.copy())
+        # NSI API now serves 2026 data; use the 2026 importer (rename_nsi_data() targets the
+        # older 2022 schema and fails on the renamed 'grnd_elv_m' field). See AD note in
+        # functions_preprocessing.rename_nsi_data_2026.
+        nsi = pre.rename_nsi_data_2026(nsi.copy())
 
         _, intermediate_dir, _ = self.setup_national_preprocess_dirs()
         cb_id_name = self.census_year_config(int(census_year))["cb_id_name"]
@@ -806,6 +812,11 @@ class City:
                                                           bldgtype_key, strtype_key, n_pw, use_bldg_type,
                                                           allow_mh_only_for_res2, no_urm, res3ab_to_res1_flag)
 
+        # Resolve structure-type errors: rather than dropping buildings with no valid structure
+        # type for their occupancy/era/region, randomly sample a structure type to fill the gap.
+        fill_in_error_structure_types = True
+        bldg_properties_df = resolve.resolve_structure_errors(bldg_properties_df.copy(), fill_in_error_structure_types)
+
         # EXPORT
         fxns.gdf_to_json(bldg_properties_df, self.imputed_and_inferred_inventory_path())
         print("Saved:", self.imputed_and_inferred_inventory_path().resolve())
@@ -813,21 +824,23 @@ class City:
     def export_inventory_for_r2d(self):
         bldg_properties_df = fxns.json_to_gdf(self.imputed_and_inferred_inventory_path(), self.crs_main)
 
-        # Convert to format of R2D - remove missing data
-        bldg_properties_df_nomissing = bldg_properties_df[
-            ~((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType'] == 'na'))].copy()
-        print(len(bldg_properties_df[((bldg_properties_df['StructureType'].isna()) | (
-                    bldg_properties_df['StructureType'] == 'na'))].copy()),
-              'points dropped due to missing structure type')
-
+        # Missing structure types are now filled upstream by resolve_structure_errors() in
+        # infer_structure_type(), so no rows are dropped here.
         # Create appropriate columns
-        r2d = bldg_properties_df_nomissing.copy()
+        r2d = bldg_properties_df.copy()
         r2d['Longitude'] = r2d['geometry'].x
         r2d['Latitude'] = r2d['geometry'].y
         r2d = r2d[
             ['Latitude', 'Longitude', 'PlanArea', 'NumberOfStories', 'YearBuilt', 'ReplacementCost', 'StructureValue',
-             'StructureType', 'BuildingType', 'OccupancyClass_clean', 'OccupancyClass', 'NumberOfUnits',
+             'StructureType', 'BuildingType', 'OccupancyClass', 'NumberOfUnits',
              'NightPopulation', 'DayPopulation', 'CensusBlock', 'CensusTract', 'FootprintID', 'geometry']]
+
+        # Keep the full occupancy class, then simplify to the Pelicun/R2D-ready categories
+        r2d['OccupancyClass_Actual'] = r2d['OccupancyClass']
+        r2d['OccupancyClass'] = r2d['OccupancyClass_Actual'].apply(resolve.simplify_occ_to_r2d)
+
+        # Update building type to be consistent with the assigned structure type
+        r2d['BuildingType'] = r2d['StructureType'].apply(resolve.extract_bldg_type)
 
         # Assign design level and height class (used in regional analysis)
         r2d = resolve.find_design_level(r2d, 'StructureType', 'YearBuilt', 'DesignLevel')
@@ -835,10 +848,6 @@ class City:
 
         # Add id
         r2d.insert(0, 'id', range(len(r2d)))
-
-        # Rename occupancy class columns for R2D use
-        r2d = r2d.rename(columns={'OccupancyClass': 'OccupancyClass_Actual',
-                                  'OccupancyClass_clean': 'OccupancyClass'})
 
         r2d_inventory_csv_path, r2d_inventory_json_path, _ = self.r2d_inventory_paths()
 
