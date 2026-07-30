@@ -192,12 +192,19 @@ def merge_intersecting(points, footprints, crs_plot, plot):
 
     # See if any point was associated with multiple footprints 
     if unique_points.index.is_unique == False:
-        print('ERROR: SINGLE POINT ASSOCIATED WITH MULTIPLE FOOTPRINTS - PLOTTING DUPLICATE IDS AND ASSOCIATED FOOTPRINTS')
-        if plot:
-            duplicate = unique_points[unique_points.duplicated(subset='POINT_ID', keep = False)]
-            dup_ftpts = footprints[footprints['FootprintID'].isin(duplicate['FootprintID'])]
 
-            # Create a base map
+        print('WARNING: SINGLE POINT ASSOCIATED WITH MULTIPLE FOOTPRINTS - KEEPING FIRST OCCURRENCE, DROPPING DUPLICATES')
+        duplicate = unique_points[unique_points.duplicated(subset='POINT_ID', keep=False)]
+        print(f'Duplicate point entries found: {len(duplicate)} rows affected, dropping down to {duplicate["POINT_ID"].nunique()} unique points')
+
+        # Keep only the first occurrence of each duplicated POINT_ID
+        unique_points = unique_points.drop_duplicates(subset='POINT_ID', keep='first')
+
+
+        if plot:
+
+            # Create plot
+            dup_ftpts = footprints[footprints['FootprintID'].isin(duplicate['FootprintID'])]
             dup_ftpts_plot = dup_ftpts.copy().to_crs(crs_plot)
             duplicate_plot = duplicate.copy().to_crs(crs_plot)
 
@@ -466,7 +473,7 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
                 df_to_print = df_to_print.drop(columns = ['geometry'])
                 print('WARNING: UNEXPECTED OCCUPANCY COMBINATION - Check Occupancy Type Manually and Assign or Drop (if no action taken, will be kept as mixed use)')
                 # AD: display will not work in non-notebook environment. not a good idea to include display in base functions
-                # display(df_to_print)
+                print(df_to_print)
             
             # RESIDENTIAL AND INDUSTRIAL POINTS (IND6 EXCLUDED -- COMMONLY HAS SAME BID AS  RES1)
             if (occ_class_series.str.contains('RES1|RES2|RES3').any()) and (occ_class_series.str.contains('IND1|IND2|IND3|IND4|IND5').any()):
@@ -475,7 +482,7 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
                 df_to_print = df_to_print.drop(columns = ['geometry'])
                 print('WARNING: UNEXPECTED OCCUPANCY COMBINATION - Check Occupancy Type Manually and Assign or Drop (if no action taken, will be kept as mixed use)')
                 # AD: display will not work in non-notebook environment. not a good idea to include display in base functions
-                # display(df_to_print)
+                print(df_to_print)
 
             # RESIDENTIAL AND GOVERNMENT POINTS 
             if (occ_class_series.str.contains('RES1|RES2|RES3').any()) and (occ_class_series.str.contains('GOV1').any()):
@@ -484,7 +491,7 @@ def merge_occ_type(group, manually_assigned_occupancy, print_odd_occupancy_pairi
                 df_to_print = df_to_print.drop(columns = ['geometry'])
                 print('WARNING: UNEXPECTED OCCUPANCY COMBINATION - Check Occupancy Type Manually and Assign or Drop (if no action taken, will be kept as mixed use)')
                 # AD: display will not work in non-notebook environment. not a good idea to include display in base functions
-                # display(df_to_print)
+                print(df_to_print)
 
 
 

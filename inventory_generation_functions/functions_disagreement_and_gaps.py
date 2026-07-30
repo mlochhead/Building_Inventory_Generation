@@ -16,7 +16,7 @@ from collections import Counter
 import random
 import requests
 
-import inventory_generation_functions.hazus_rulesets as hazrules
+import inventory_generation_functions.hazus_rulesets as hazrules  # AD: package-qualified for the inventory_generation_city package layout
 
 
 
@@ -894,6 +894,34 @@ def simplify_occ(s):
 
 
 
+###### VERSION THAT SIMPLIFIES TO PELICUN-READY OCCUPANCY
+def simplify_occ_to_r2d(value):
+    if 'RES1' in value:
+        return 'RES1'
+    elif 'RES2' in value:
+        return 'RES2'
+    elif 'RES3' in value:
+        return 'RES3'
+    elif 'RES4' in value:
+        return 'RES4'
+    elif 'RES5' in value:
+        return 'RES5'
+    elif 'RES6' in value:
+        return 'RES6'
+    elif 'GOV2' in value:
+        return 'GOV2'
+    elif 'EDU1' in value:
+        return 'EDU1'
+    elif 'EDU2' in value:
+        return 'EDU2'
+    else:
+        return value
+    
+########
+
+
+
+
 ###### CREATED NEW VERSION OF MODULATE_WEIGHTS -- TAKEN FROM BRAILS++ CODE 
 def modulate_weights(weights, structure_types, region, occ, year_class, height, allow_mh_only_for_res2, no_urm):
 
@@ -1405,40 +1433,15 @@ def find_design_level(df, structure_col, year_col, designlevel_col):
 #############
 
 
-###### VERSION THAT SIMPLIFIES TO PELICUN-READY OCCUPANCY
-def simplify_occ_to_r2d(value):
-    if 'RES1' in value:
-        return 'RES1'
-    elif 'RES2' in value:
-        return 'RES2'
-    elif 'RES3' in value:
-        return 'RES3'
-    elif 'RES4' in value:
-        return 'RES4'
-    elif 'RES5' in value:
-        return 'RES5'
-    elif 'RES6' in value:
-        return 'RES6'
-    elif 'GOV2' in value:
-        return 'GOV2'
-    elif 'EDU1' in value:
-        return 'EDU1'
-    elif 'EDU2' in value:
-        return 'EDU2'
-    else:
-        return value
-########
-
-
 #############
 def extract_bldg_type(value):
     """
-    This function updates the building type of each footprint to be consistent with the assigned structure type.
+    This function updates the building type of each footprint to be consistent with the assigned structure type. 
     This is expecially important when structure type is decoupled from the original building type, such as the case of the National Synthesis Workflow
     """
-    if value in ['RM1','RM2','URM']:
+    if value in ['RM1','RM2','URM']: 
         return 'M'
-    elif value in ['W1','W2']:
+    elif value in ['W1','W2']: 
         return 'W'
     elif value in ['S1','S2','S3','S4','S5']:
         return 'S'
@@ -1446,20 +1449,22 @@ def extract_bldg_type(value):
         return 'C'
     elif value in ['MH']:
         return 'H'
-    else:
+    else: 
         return 'ERROR'
 #############
+
+
 
 
 def resolve_structure_errors(bldg_properties_df, fill_in_error_structure_types):
     """
     This function addresses how to handle cases that do not have possible structure types associated with the occupancy / era / region of interest
-    If fill_error_flag is set to true, the function randomly samples from all structure types (excluding URM and MH) to fill in gaps.
+    If fill_error_flag is set to true, the function randomly samples from all structure types (excluding URM and MH) to fill in gaps. 
     If fill_error_flag is set to false, buildings with structure type errors are dropped from the inventory"""
 
     bldg_properties_df = bldg_properties_df.copy()
 
-    if fill_in_error_structure_types:
+    if fill_in_error_structure_types: 
 
         structure_type_list = ["W1",
                             "W2",
@@ -1474,27 +1479,26 @@ def resolve_structure_errors(bldg_properties_df, fill_in_error_structure_types):
                             "PC1",
                             "PC2",
                             "RM1",
-                            "RM2"] # URM, MH
+                            "RM2"] # URM, MH 
 
 
-        # Fill in structure type for cases where it is missing due to incompatibilities
+        # Fill in structure type for cases where it is missing due to incompatibilities 
         missing_mask = (bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType'] == 'na')
 
-        # Sample from above list
+        # Sample from above list 
         n_missing = missing_mask.sum()
         bldg_properties_df.loc[missing_mask, 'StructureType'] = np.random.choice(
-            structure_type_list,
-            size=n_missing,
+            structure_type_list, 
+            size=n_missing, 
             replace=True)
-
+        
         print(len(bldg_properties_df[((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType']=='na'))].copy()), 'points dropped due to missing structure type')
 
 
-    else: # Don't fill in missing structure types by random sampling
+    else: # Don't fill in missing structure types by random sampling 
 
-        # Drop missing data
+        # Drop missing data 
         print(len(bldg_properties_df[((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType']=='na'))].copy()), 'points dropped due to missing structure type')
         bldg_properties_df = bldg_properties_df[~((bldg_properties_df['StructureType'].isna()) | (bldg_properties_df['StructureType']=='na'))].copy()
 
     return bldg_properties_df
-#############

@@ -1,38 +1,44 @@
 ## DESCRIPTION
 
-This repository contains Python functions to process and synthesize building inventory data for regional risk assessments. This repository represents the code used in the Inventory Synthesis Framework discussed in Lochhead et al. (submitted). The preprint for the paper is available [here](https://doi.org/10.31224/6008).
+This repository contains Python functions to process and synthesize building inventory data for regional risk assessments. This repository represents the code used in the Inventory Synthesis Framework discussed in [Lochhead et al. (2026)](https://doi.org/10.1016/j.ijdrr.2026.106148).
 
-This repository is organized into three main folders. 
+This repository is organized into several main folders. 
 
-1. **`inventory_generation_functions`**: This folder contains Python functions used to process and synthesize inventory data from various sources.
+1. **`inventory_generation_functions`**: Contains Python functions used to process and synthesize inventory data from various sources.
 
-2. **`inventory_generation_hayward`**: This folder contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (submitted). However, the Jupyter notebook files could serve as examples for inventory generation elsewhere, particularly for the National Synthesis workflow. Some input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States.
+2. **`inventory_generation_hayward`**: Contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (2026).
 
-2. **`point_to_footprint_example`**: This folder contains an example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed.
+3. **`example_national_synthesis_workflow`**: Contains an example of the National Synthesis Workflow. To adopt this workflow other locations, input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed.
+
+3. **`example_point_to_footprint`**: Contains an example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. 
 
 
 ## INVENTORY SYNTHESIS FRAMEWORK
 
-All scripts in this repository support the Inventory Synthesis Framework from Lochhead et al. (submitted), as shown below.
+All scripts in this repository support the Inventory Synthesis Framework from Lochhead et al. (under review), as shown below.
 
 ![Inventory Synthesis Framework](Inventory_Synthesis_Framework.png)
 
 
 ## HOW TO RUN
 
-The scripts in this repository require Python 3.10 to run. While they have been tested with this version, compatibility with other Python versions is not guaranteed.
+The scripts in this repository require Python 3.10 to run. While scripts may be compatible with other Python verisons, compatibility is not guaranteed.
 
-The following instructions are intended to help new users get started with the scripts. They are designed for Mac users, but similar steps can be adapted for Windows users. These specific commands are not mandatory, as long as Python 3.10 and the dependencies listed in `requirements.txt` are used. The instructions below represent one way to set up the environment.
+The following instructions are intended to help new users get started with the scripts. These specific commands are not mandatory, as long as Python 3.10 and the dependencies listed in `requirements.txt` are used. The instructions below represent one way to set up the environment.
 
 ### Clone the Repository 
 
-To begin, create a local directory for the repository, then open a terminal and run the following command:
+To begin, select a local directory for the repository, then open a terminal and run the following command:
 
-`git clone https://github.com/your-username/your-repository.git`
+`git clone https://github.com/mlochhead/Building_Inventory_Generation.git`
+
+Once cloning is complete, navigate into the repository directory:
+
+`cd Building_Inventory_Generation`
 
 ### Setting Up a Virtual Environment on macOS/Linux
 
-Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment, use the following commands. These commands should be executed from the terminal in the directory where the repository has been cloned:
+Using a virtual environment is recommended for managing project dependencies. To create and activate the virtual environment, use the following commands. These commands should be executed from the terminal in the repository directory: 
 
 `python3.10 -m venv inventory_env`
 
@@ -63,6 +69,21 @@ Once the environment is set up and activated, you can run the Jupyter notebooks 
 ## LICENSE
 
 This repository is available under the BSD 3-Clause license, see LICENSE.
+
+## CITATION
+
+If you use this work, please cite:
+
+```bibtex
+@article{lochhead2026exposure,
+  title={Exposure matters: A synthesis framework for high-resolution building inventory development},
+  author={Lochhead, Meredith and Zsarn{\'o}czay, {\'A}d{\'a}m and Deierlein, Gregory G},
+  journal={International Journal of Disaster Risk Reduction},
+  pages={106148},
+  year={2026},
+  publisher={Elsevier}
+}
+```
 
 ## CONTACT
 
