@@ -16,7 +16,12 @@ from collections import Counter
 import random
 import requests
 
-import inventory_generation_functions.hazus_rulesets as hazrules  # AD: package-qualified for the inventory_generation_city package layout
+# AD: import works both when this module is used as part of the inventory_generation_city
+# package (package-qualified) and when the functions folder is on sys.path directly (the notebooks).
+try:
+    import inventory_generation_functions.hazus_rulesets as hazrules
+except ModuleNotFoundError:
+    import hazus_rulesets as hazrules
 
 
 
