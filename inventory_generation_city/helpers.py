@@ -314,6 +314,7 @@ def augment_nsi_edu1(
         cb_id_name: str,
         hifld_paths: dict,
         plot: bool,
+        use_nsi_26: bool = False,
 ) -> Tuple[gpd.GeoDataFrame, Union[folium.Map, str]]:
     public = gpd.read_file(hifld_paths["public_schools_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
     private = gpd.read_file(hifld_paths["private_schools_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
@@ -336,9 +337,21 @@ def augment_nsi_edu1(
         plt.show()
 
     school_import = school_import.drop(columns=['NAME'])
-    nsi, m = pre.synthesize_edu1_and_HIFLD(
-        nsi, school_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_edu1=True, drop_gov1_near_edu1=True
-    )
+    if use_nsi_26:
+        # NSI26 update path: MTL's updated EDU1/HIFLD synthesis. The *_nsi26_update function
+        # returns only nsi (no overlap map) and takes new flags. Defaults below mirror the
+        # non-update 'drop' behavior; confirm the intended values with MTL.
+        nsi = pre.synthesize_edu1_and_HIFLD_nsi26_update(
+            nsi, school_import,
+            drop_unpaired_nsi_edu1=True,
+            drop_edu1_far_from_hifld=True,
+            gov1_near_edu1='drop',
+        )
+        m = None
+    else:
+        nsi, m = pre.synthesize_edu1_and_HIFLD(
+            nsi, school_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_edu1=True, drop_gov1_near_edu1=True
+        )
     return nsi, m
 
 def augment_nsi_edu2(
@@ -352,6 +365,7 @@ def augment_nsi_edu2(
         cb_id_name: str,
         hifld_paths: dict,
         plot: bool,
+        use_nsi_26: bool = False,
 ) -> gpd.GeoDataFrame:
     univ = gpd.read_file(hifld_paths["univ_campuses_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
     univ_pts = gpd.read_file(hifld_paths["univ_points_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
@@ -399,13 +413,20 @@ def augment_nsi_edu2(
             plt.title("HIFLD UNIVERSITY VS NSI EDU2 DATA")
             plt.show()
 
+    # prepare_pts_without_campuses has no NSI26 variant, so it is used in both paths.
     edu2_no_campus = pre.prepare_pts_without_campuses(univ_pts_city, univ_city, nsi.copy())
     nsi = pd.concat([nsi, edu2_no_campus])
 
-    edu2_no_gov1 = pre.prepare_pts_without_gov1(univ_pts_city, univ_city, nsi.copy())
+    if use_nsi_26:
+        edu2_no_gov1 = pre.prepare_pts_without_gov1_nsi26_update(univ_pts_city, univ_city, nsi.copy())
+    else:
+        edu2_no_gov1 = pre.prepare_pts_without_gov1(univ_pts_city, univ_city, nsi.copy())
     nsi = pd.concat([nsi, edu2_no_gov1])
 
-    nsi = pre.merge_pts_with_campuses(univ_city, nsi.copy(), scale_edu2_pop=True)
+    if use_nsi_26:
+        nsi = pre.merge_pts_with_campuses_nsi26_update(univ_city, nsi.copy(), scale_edu2_pop=True)
+    else:
+        nsi = pre.merge_pts_with_campuses(univ_city, nsi.copy(), scale_edu2_pop=True)
 
     # RUN CHECK: Following numbers should match (within scaling/rounding error)
     for school_num in range(len(univ_city)):
@@ -429,6 +450,7 @@ def augment_nsi_gov2(
         cb_id_name: str,
         hifld_paths: dict,
         plot: bool,
+        use_nsi_26: bool = False,
 ) -> Tuple[gpd.GeoDataFrame, Union[folium.Map, str]]:
     fire = gpd.read_file(hifld_paths["fire_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
     police = gpd.read_file(hifld_paths["police_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
@@ -451,9 +473,21 @@ def augment_nsi_gov2(
 
     gov2_import = pd.concat([fire, police, local_eoc, state_eoc], ignore_index=True, sort=False)
 
-    nsi, m = pre.synthesize_gov2_and_HIFLD(
-        nsi, gov2_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_gov2=True, drop_gov1_near_gov2=True
-    )
+    if use_nsi_26:
+        # NSI26 update path: MTL's updated GOV2/HIFLD synthesis. Returns only nsi (no overlap
+        # map) and takes a new gov2_far_from_hifld flag. Defaults below mirror the non-update
+        # 'drop' behavior; confirm the intended values with MTL.
+        nsi = pre.synthesize_gov2_and_HIFLD_nsi26_update(
+            nsi, gov2_import,
+            drop_unpaired_nsi_gov2=True,
+            drop_gov1_near_gov2=True,
+            gov2_far_from_hifld='drop',
+        )
+        m = None
+    else:
+        nsi, m = pre.synthesize_gov2_and_HIFLD(
+            nsi, gov2_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_gov2=True, drop_gov1_near_gov2=True
+        )
     return nsi, m
 
 

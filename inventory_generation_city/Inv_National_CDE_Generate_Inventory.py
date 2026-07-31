@@ -13,6 +13,10 @@ cities = [
 
 inp_dir = cities[0].inp_dir
 
+# Note: the NSI 2026 methodology toggle (use_nsi_26) lives in Inv_National_A_Preprocess.py.
+# The *_nsi26_update functions are all in the preprocess/augment step, so this step (CDE) has
+# no NSI26-specific branch.
+
 census_api_key = load_census_api_key(
     path=inp_dir / "Census" / "census_api_key.txt"
 )

@@ -231,6 +231,7 @@ class City:
             hifld_paths: dict,
             min_area_filter_ft2: float,
             plot: bool = True,
+            use_nsi_26: bool = False,
     ) -> None:
         nsi = gpd.read_file(self.nsi_raw_path())
         nsi = nsi.to_crs(crs=f"EPSG:{int(self.crs_main)}")
@@ -277,8 +278,9 @@ class City:
                 cb_id_name=cb_id_name,
                 hifld_paths=hifld_paths["EDU1"],
                 plot=plot,
+                use_nsi_26=use_nsi_26,
             )
-            if plot:
+            if plot and m is not None:
                 hf.show_folium_map(m, self.maps_dir() / f"{self.city_name}_NSI_EDU1_Upgrade.html")
             out_path = intermediate_dir / f"{self.city_name}_NSI_EDU1_Upgrade.json"
             fxns.gdf_to_json(nsi, out_path)
@@ -296,6 +298,7 @@ class City:
                 cb_id_name=cb_id_name,
                 hifld_paths=hifld_paths["EDU2"],
                 plot=plot,
+                use_nsi_26=use_nsi_26,
             )
             out_path = intermediate_dir / f"{self.city_name}_NSI_EDU1_EDU2_Upgrade.json"
             fxns.gdf_to_json(nsi, out_path)
@@ -312,8 +315,9 @@ class City:
                 cb_id_name=cb_id_name,
                 hifld_paths=hifld_paths["GOV2"],
                 plot=plot,
+                use_nsi_26=use_nsi_26,
             )
-            if plot:
+            if plot and m is not None:
                 hf.show_folium_map(m, self.maps_dir() / f"{self.city_name}_NSI_EDU1_EDU2_GOV2_Upgrade.html")
             out_path = intermediate_dir / f"{self.city_name}_NSI_EDU1_EDU2_GOV2_Upgrade.json"
             fxns.gdf_to_json(nsi, out_path)
