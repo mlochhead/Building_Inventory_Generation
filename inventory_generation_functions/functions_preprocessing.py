@@ -739,26 +739,18 @@ def synthesize_edu1_and_HIFLD(nsi, school_import, crs_plot, plot_flag, drop_unpa
 
 
 ##########################
-def find_gov1_near_hifld(nsi, hifld_occ, buffer):
-    """
-    Locates GOV1 points within specified distance of a specfied occupancy class
-    Input:
-    - nsi: GeoDataFrame with NSI data.
-    Output:
-    - nsi: GeoDataFrame with GOV1 near specified occupancy class (to be dropped from NSI)
-    """
-    gov1_points = nsi[nsi['NSI_OccupancyClass'] == 'GOV1']
-    hifld_points = nsi[nsi['NSI_OccupancyClass'] == hifld_occ]
-
-    # Create a buffer around EDU1-PUB points with a radius of 50 meters
-    hifld_points_buffer = hifld_points.copy()
-    hifld_points_buffer['geometry'] = hifld_points_buffer.geometry.buffer(buffer)
-
-    # Perform a spatial join to find GOV1 points within 100 meters of EDU1-PUB
-    gov1_near_edu1_pub = gpd.sjoin(gov1_points, hifld_points_buffer, how='inner', predicate='within')
-
-    # Return
-    return gov1_near_edu1_pub
+# NOTE (AD): a second, non-equivalent definition of find_gov1_near_hifld used to live here.
+# It selected HIFLD points with an exact match on occupancy class, while the definition
+# further down this file (search for the surviving find_gov1_near_hifld) uses a substring
+# match. Python kept only the later definition, so every caller in this file has always
+# used the substring version. The duplicate was removed because it was dead code that
+# misrepresented the real behavior.
+#
+# The substring match is required, not incidental. synthesize_gov2_and_HIFLD calls this
+# function with 'GOV2', and the newly imported HIFLD points carry the subdivided classes
+# GOV2-FIRE, GOV2-POLICE and GOV2-OPERATIONS. An exact match on 'GOV2' would find none of
+# them. For the 'EDU1-PUB' and 'EDU1-PRIV' callers the two forms behave identically,
+# because no other occupancy class contains those strings.
 ##########################
 
 
@@ -1555,13 +1547,16 @@ def find_gov1_near_hifld(nsi, hifld_occ, buffer):
     - nsi: GeoDataFrame with GOV1 near specified occupancy class (to be dropped from NSI)
     """
     gov1_points = nsi[nsi['NSI_OccupancyClass'] == 'GOV1']
-    hifld_points = nsi[nsi['NSI_OccupancyClass'].str.contains(hifld_occ)]
+    # Substring match so that a search for 'GOV2' also picks up the subdivided HIFLD classes
+    # GOV2-FIRE, GOV2-POLICE and GOV2-OPERATIONS. na=False keeps rows with a missing
+    # occupancy class out of the result instead of raising when the mask is applied.
+    hifld_points = nsi[nsi['NSI_OccupancyClass'].str.contains(hifld_occ, na=False)]
 
-    # Create a buffer around EDU1-PUB points with a radius of 50 meters
+    # Buffer the HIFLD points by the caller-supplied radius, in metres
     hifld_points_buffer = hifld_points.copy()
     hifld_points_buffer['geometry'] = hifld_points_buffer.geometry.buffer(buffer)
 
-    # Perform a spatial join to find GOV1 points within 100 meters of EDU1-PUB
+    # Spatial join to find the GOV1 points falling inside those buffers
     gov1_near_edu1_pub = gpd.sjoin(gov1_points, hifld_points_buffer, how='inner', predicate='within')
 
     # Return
@@ -1727,19 +1722,22 @@ def synthesize_edu1_and_HIFLD_nsi26_update(nsi, school_import, drop_unpaired_nsi
             far_both = far_pub.intersection(far_priv)
 
             nsi.loc[far_both, 'POINT_DropFlag'] = 1
-            nsi.loc[far_both, 'POINT_DropNote'] = 'EDU1 Point more than 100m from any HIFLD School'
+            nsi.loc[far_both, 'POINT_DropNote'] = 'EDU1 Point more than 150m from any HIFLD School'
 
 
-    # Flag all GOV1 Points within 50m of a newly imported EDU1 point 
+    # Handle GOV1 points sitting within 150m of a newly imported HIFLD EDU1 point
     if gov1_near_edu1 == 'drop':
 
+        # AD fix: the second call used to pass 'EDU1-PUB' a second time, which meant GOV1
+        # points near private schools were never flagged. It now mirrors the 'convert'
+        # branch below by checking public schools first and private schools second.
         gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PUB',150)
         nsi.loc[gov1_near_edu1.index,'POINT_DropFlag']=1
-        nsi.loc[gov1_near_edu1.index,'POINT_DropNote']='GOV1 Point within 50m of HIFLD School'
+        nsi.loc[gov1_near_edu1.index,'POINT_DropNote']='GOV1 Point within 150m of HIFLD School'
 
-        gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PUB',150)
+        gov1_near_edu1 = find_gov1_near_hifld(nsi.copy(), 'EDU1-PRIV',150)
         nsi.loc[gov1_near_edu1.index,'POINT_DropFlag']=1
-        nsi.loc[gov1_near_edu1.index,'POINT_DropNote']='GOV1 Point within 50m of HIFLD School'
+        nsi.loc[gov1_near_edu1.index,'POINT_DropNote']='GOV1 Point within 150m of HIFLD School'
 
     elif gov1_near_edu1 == 'convert':
 
@@ -1971,7 +1969,7 @@ def synthesize_gov2_and_HIFLD_nsi26_update(nsi, new_gov2, drop_unpaired_nsi_gov2
             far_ops = find_gov2_far_hifld(nsi.copy(), 'GOV2-OPERATIONS', 50).index
             far_all = (far_fire.intersection(far_police).intersection(far_ops))
             nsi.loc[far_all, 'POINT_DropFlag'] = 1
-            nsi.loc[far_all, 'POINT_DropNote'] = 'GOV2 Point more than 100m from any HIFLD GOV2'
+            nsi.loc[far_all, 'POINT_DropNote'] = 'GOV2 Point more than 50m from any HIFLD GOV2'
         
     elif gov2_far_from_hifld == 'convert': 
 
@@ -2070,6 +2068,14 @@ def rename_nsi_data_2026(centroids_NSI):
             f'Available fields: {sorted(c for c in nsi.columns if c != "geometry")}'
         )
     nsi = nsi.rename(columns=rename_map)
+
+    # Normalize blank building IDs to 'Missing'. The 2026 NSI API returns an empty string for a
+    # structure that has no building ID, whereas the 2022 API returned a null. Downstream,
+    # add_nsi_tracking_columns only converts nulls to 'Missing', and merge_duplicate_bid merges
+    # every point that shares the same non-'Missing' NSI_BID into a single building. Without this
+    # line, all empty-string BIDs are grouped as one building and thousands of distinct structures
+    # get absorbed and dropped from the inventory. -AD
+    nsi['NSI_BID'] = nsi['NSI_BID'].replace({'': 'Missing', 'nan': 'Missing', 'None': 'Missing'}).fillna('Missing')
 
     # Derive total populations and replacement cost (same conventions as rename_nsi_data)
     nsi['NSI_Population_Night'] = nsi[['NSI_PopUnder65_Night', 'NSI_PopOver65_Night']].sum(axis=1)

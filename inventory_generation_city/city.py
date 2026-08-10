@@ -736,11 +736,13 @@ class City:
         for_imputation['Longitude'] = for_imputation['geometry'].x
         for_imputation['Latitude'] = for_imputation['geometry'].y
 
-        # Separate required columns for imputation
+        # Separate required columns for imputation (NSI_Occupancies rides along untouched:
+        # the original NSI occupancy list per footprint, for downstream provenance)
         for_imputation = for_imputation[
             ['Latitude', 'Longitude', 'PlanArea_Best', 'Stories_Best', 'NSI_MedYearBuilt_Single',
              'ReplacementCost_Best', 'StructureValue_Best', 'OccupancyClass_Best', 'NSI_BuildingType_Single',
-             'Units_Best', 'NSI_Population_Night', 'NSI_Population_Day', 'CensusBlock', 'CensusTract', 'FootprintID']]
+             'Units_Best', 'NSI_Population_Night', 'NSI_Population_Day', 'CensusBlock', 'CensusTract', 'FootprintID',
+             'NSI_Occupancies']]
 
         # Standardize columns for imputation and R2D
         for_imputation = for_imputation.rename(columns={
@@ -780,7 +782,7 @@ class City:
         #### IMPUTE DATA USING BRAILS ####
         imputer = knn_imputer_class(inventory, n_possible_worlds=1,
                                     exclude_features=['PlanArea', 'ReplacementCost', 'StructureValue', 'OccupancyClass',
-                                                      'FootprintID', 'BuildingType'])
+                                                      'FootprintID', 'BuildingType', 'NSI_Occupancies'])
         new_inventory = imputer.impute()
 
         # Conver to pandas geodataframe
@@ -837,7 +839,8 @@ class City:
         r2d = r2d[
             ['Latitude', 'Longitude', 'PlanArea', 'NumberOfStories', 'YearBuilt', 'ReplacementCost', 'StructureValue',
              'StructureType', 'BuildingType', 'OccupancyClass', 'NumberOfUnits',
-             'NightPopulation', 'DayPopulation', 'CensusBlock', 'CensusTract', 'FootprintID', 'geometry']]
+             'NightPopulation', 'DayPopulation', 'CensusBlock', 'CensusTract', 'FootprintID',
+             'NSI_Occupancies', 'geometry']]
 
         # Keep the full occupancy class, then simplify to the Pelicun/R2D-ready categories
         r2d['OccupancyClass_Actual'] = r2d['OccupancyClass']
