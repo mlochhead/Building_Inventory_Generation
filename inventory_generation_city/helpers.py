@@ -314,6 +314,7 @@ def augment_nsi_edu1(
         cb_id_name: str,
         hifld_paths: dict,
         plot: bool,
+        use_nsi_26: bool = False,
 ) -> Tuple[gpd.GeoDataFrame, Union[folium.Map, str]]:
     public = gpd.read_file(hifld_paths["public_schools_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
     private = gpd.read_file(hifld_paths["private_schools_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
@@ -336,9 +337,34 @@ def augment_nsi_edu1(
         plt.show()
 
     school_import = school_import.drop(columns=['NAME'])
-    nsi, m = pre.synthesize_edu1_and_HIFLD(
-        nsi, school_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_edu1=True, drop_gov1_near_edu1=True
-    )
+    if use_nsi_26:
+        # NSI26 update path: MTL's updated EDU1/HIFLD synthesis. The *_nsi26_update function
+        # returns only nsi (no overlap map) and takes new flags.
+        #
+        # Flag values below match MTL's own NSI26 driver notebook, which lives upstream at
+        # in_development_inventory_generation_hayward_nsi26/Inv_National_A_Preprocess.ipynb
+        # on the upstream/city-class branch. The 2026 methodology deliberately stops deleting
+        # ambiguous NSI points and reclassifies them instead:
+        #   - drop_unpaired_nsi_edu1=False keeps NSI EDU1 points that did not pair with a
+        #     HIFLD school. The crude "did not pair within 50m, so delete" rule from the 2022
+        #     method is replaced by the geometric prune below.
+        #   - drop_edu1_far_from_hifld=True drops only NSI EDU1 points farther than 150m from
+        #     every HIFLD school, public and private alike.
+        #   - gov1_near_edu1='convert' relabels GOV1 points near a school as EDU1 rather than
+        #     deleting them. The paper (Lochhead et al., IJDRR 139 (2026) 106148, p.24) notes
+        #     that these GOV1 points are often actually educational buildings, and that
+        #     deleting them inflated GOV counts and depressed EDU counts.
+        nsi = pre.synthesize_edu1_and_HIFLD_nsi26_update(
+            nsi, school_import,
+            drop_unpaired_nsi_edu1=False,
+            drop_edu1_far_from_hifld=True,
+            gov1_near_edu1='convert',
+        )
+        m = None
+    else:
+        nsi, m = pre.synthesize_edu1_and_HIFLD(
+            nsi, school_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_edu1=True, drop_gov1_near_edu1=True
+        )
     return nsi, m
 
 def augment_nsi_edu2(
@@ -352,6 +378,7 @@ def augment_nsi_edu2(
         cb_id_name: str,
         hifld_paths: dict,
         plot: bool,
+        use_nsi_26: bool = False,
 ) -> gpd.GeoDataFrame:
     univ = gpd.read_file(hifld_paths["univ_campuses_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
     univ_pts = gpd.read_file(hifld_paths["univ_points_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
@@ -399,13 +426,20 @@ def augment_nsi_edu2(
             plt.title("HIFLD UNIVERSITY VS NSI EDU2 DATA")
             plt.show()
 
+    # prepare_pts_without_campuses has no NSI26 variant, so it is used in both paths.
     edu2_no_campus = pre.prepare_pts_without_campuses(univ_pts_city, univ_city, nsi.copy())
     nsi = pd.concat([nsi, edu2_no_campus])
 
-    edu2_no_gov1 = pre.prepare_pts_without_gov1(univ_pts_city, univ_city, nsi.copy())
+    if use_nsi_26:
+        edu2_no_gov1 = pre.prepare_pts_without_gov1_nsi26_update(univ_pts_city, univ_city, nsi.copy())
+    else:
+        edu2_no_gov1 = pre.prepare_pts_without_gov1(univ_pts_city, univ_city, nsi.copy())
     nsi = pd.concat([nsi, edu2_no_gov1])
 
-    nsi = pre.merge_pts_with_campuses(univ_city, nsi.copy(), scale_edu2_pop=True)
+    if use_nsi_26:
+        nsi = pre.merge_pts_with_campuses_nsi26_update(univ_city, nsi.copy(), scale_edu2_pop=True)
+    else:
+        nsi = pre.merge_pts_with_campuses(univ_city, nsi.copy(), scale_edu2_pop=True)
 
     # RUN CHECK: Following numbers should match (within scaling/rounding error)
     for school_num in range(len(univ_city)):
@@ -429,6 +463,7 @@ def augment_nsi_gov2(
         cb_id_name: str,
         hifld_paths: dict,
         plot: bool,
+        use_nsi_26: bool = False,
 ) -> Tuple[gpd.GeoDataFrame, Union[folium.Map, str]]:
     fire = gpd.read_file(hifld_paths["fire_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
     police = gpd.read_file(hifld_paths["police_path"]).to_crs(crs=f"EPSG:{int(crs_main)}")
@@ -451,9 +486,31 @@ def augment_nsi_gov2(
 
     gov2_import = pd.concat([fire, police, local_eoc, state_eoc], ignore_index=True, sort=False)
 
-    nsi, m = pre.synthesize_gov2_and_HIFLD(
-        nsi, gov2_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_gov2=True, drop_gov1_near_gov2=True
-    )
+    if use_nsi_26:
+        # NSI26 update path: MTL's updated GOV2/HIFLD synthesis. Returns only nsi (no overlap
+        # map) and takes a new gov2_far_from_hifld flag.
+        #
+        # Flag values match MTL's upstream NSI26 driver notebook (see augment_nsi_edu1 above
+        # for the path). Same principle as the EDU1 step, which is to reclassify rather than
+        # delete:
+        #   - drop_unpaired_nsi_gov2=False keeps NSI GOV2 points that did not pair with a
+        #     HIFLD emergency facility.
+        #   - gov2_far_from_hifld='convert' demotes a GOV2 point that sits far from every
+        #     HIFLD fire, police, and emergency operations point down to GOV1, on the
+        #     reasoning that it is an ordinary government building rather than an emergency
+        #     response facility.
+        #   - drop_gov1_near_gov2=False keeps GOV1 points near the imported GOV2 points.
+        nsi = pre.synthesize_gov2_and_HIFLD_nsi26_update(
+            nsi, gov2_import,
+            drop_unpaired_nsi_gov2=False,
+            drop_gov1_near_gov2=False,
+            gov2_far_from_hifld='convert',
+        )
+        m = None
+    else:
+        nsi, m = pre.synthesize_gov2_and_HIFLD(
+            nsi, gov2_import, crs_plot, plot_flag=plot, drop_unpaired_nsi_gov2=True, drop_gov1_near_gov2=True
+        )
     return nsi, m
 
 
@@ -972,6 +1029,29 @@ def plot_source_map(
     plt.show()
 
 
+def serialize_occupancy_list(value):
+    """
+    This function serializes the list of NSI occupancy classes that landed on a single
+    building footprint into a compact string, e.g. 'RES1-1SNB:3;COM1:1' (occupancy:count,
+    largest count first). It preserves the pre-resolution provenance that
+    modify_to_single_nsi_occupancy collapses to a single winner, so downstream consumers
+    (e.g. DegCAT's population-leak reclassification) can see every occupancy the footprint's
+    original NSI points carried. Returns '' for footprints with no NSI points.
+
+    PORTING NOTE (national workflow only for now): this function is self-contained (pandas
+    only). To adopt it repo-wide, move it into
+    inventory_generation_functions/functions_disagreement_and_gaps.py next to
+    modify_to_single_nsi_occupancy and change the call in
+    resolve_within_source_disagreement() below to resolve.serialize_occupancy_list.
+    """
+    if isinstance(value, str):
+        return f"{value}:1"
+    if not isinstance(value, list) or len(value) == 0:
+        return ''
+    counts = pd.Series([str(v) for v in value]).value_counts()
+    return ';'.join(f"{occ}:{int(n)}" for occ, n in counts.items())
+
+
 def resolve_within_source_disagreement(
     inv_mod: gpd.GeoDataFrame,
 ) -> gpd.GeoDataFrame:
@@ -988,6 +1068,13 @@ def resolve_within_source_disagreement(
         inv_mod[["NSI_FoundationType", "NSI_FoundationHeight"]]
         .apply(resolve.modify_to_single_val_paired, axis=1)
         .apply(pd.Series)
+    )
+
+    # Keep the pre-resolution provenance: every NSI occupancy that landed on the footprint,
+    # with counts ('RES1-1SNB:3;COM1:1'). The single-occupancy resolution below collapses
+    # this to one winner; this column records what it collapsed.
+    inv_mod["NSI_Occupancies"] = inv_mod["NSI_OccupancyClass"].apply(
+        serialize_occupancy_list
     )
 
     inv_mod[

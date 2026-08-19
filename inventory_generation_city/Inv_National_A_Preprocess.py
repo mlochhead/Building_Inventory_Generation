@@ -17,6 +17,13 @@ cities = [
 ]
 
 census_year = 2010
+
+# NSI 2026 methodology toggle. When True, augment_nsi uses MTL's *_nsi26_update EDU1/GOV2
+# synthesis functions instead of the original ones (they add drop-far-from-HIFLD and
+# gov1-near handling). NSI26 flag values are set in helpers.augment_nsi_edu1/gov2 and should
+# be confirmed with MTL. False keeps the original National workflow behavior.
+use_nsi_26 = False
+
 hifld_path = cities[0].inp_dir / "HIFLD"
 
 hifld_paths = {
@@ -45,5 +52,6 @@ for city in cities:
         hifld_paths=hifld_paths,
         min_area_filter_ft2=450.,
         plot=city.city_name != "Los Angeles",
+        use_nsi_26=use_nsi_26,
     )
     plt.close('all')

@@ -9,6 +9,11 @@ inventory_env/
 /inventory_generation_city/Inventory_Outputs/
 /inventory_generation_city/Figures/
 /inventory_generation_city/R2D_Analysis/
+# generated inventory keeper copies and run log (regenerable; LA CSV alone is 142 MB,
+# over GitHub's 100 MB per-file limit)
+/inventory_generation_city/_INVENTORY_2026/
+/inventory_generation_city/_BASELINE_prev/
+/inventory_generation_city/Inventory_2026.log
 
 /example_national_synthesis_workflow/Inventory_Outputs/
 /example_national_synthesis_workflow/Input_Data/Census/census_api_key.txt

@@ -231,6 +231,7 @@ class City:
             hifld_paths: dict,
             min_area_filter_ft2: float,
             plot: bool = True,
+            use_nsi_26: bool = False,
     ) -> None:
         nsi = gpd.read_file(self.nsi_raw_path())
         nsi = nsi.to_crs(crs=f"EPSG:{int(self.crs_main)}")
@@ -277,8 +278,9 @@ class City:
                 cb_id_name=cb_id_name,
                 hifld_paths=hifld_paths["EDU1"],
                 plot=plot,
+                use_nsi_26=use_nsi_26,
             )
-            if plot:
+            if plot and m is not None:
                 hf.show_folium_map(m, self.maps_dir() / f"{self.city_name}_NSI_EDU1_Upgrade.html")
             out_path = intermediate_dir / f"{self.city_name}_NSI_EDU1_Upgrade.json"
             fxns.gdf_to_json(nsi, out_path)
@@ -296,6 +298,7 @@ class City:
                 cb_id_name=cb_id_name,
                 hifld_paths=hifld_paths["EDU2"],
                 plot=plot,
+                use_nsi_26=use_nsi_26,
             )
             out_path = intermediate_dir / f"{self.city_name}_NSI_EDU1_EDU2_Upgrade.json"
             fxns.gdf_to_json(nsi, out_path)
@@ -312,8 +315,9 @@ class City:
                 cb_id_name=cb_id_name,
                 hifld_paths=hifld_paths["GOV2"],
                 plot=plot,
+                use_nsi_26=use_nsi_26,
             )
-            if plot:
+            if plot and m is not None:
                 hf.show_folium_map(m, self.maps_dir() / f"{self.city_name}_NSI_EDU1_EDU2_GOV2_Upgrade.html")
             out_path = intermediate_dir / f"{self.city_name}_NSI_EDU1_EDU2_GOV2_Upgrade.json"
             fxns.gdf_to_json(nsi, out_path)
@@ -732,11 +736,13 @@ class City:
         for_imputation['Longitude'] = for_imputation['geometry'].x
         for_imputation['Latitude'] = for_imputation['geometry'].y
 
-        # Separate required columns for imputation
+        # Separate required columns for imputation (NSI_Occupancies rides along untouched:
+        # the original NSI occupancy list per footprint, for downstream provenance)
         for_imputation = for_imputation[
             ['Latitude', 'Longitude', 'PlanArea_Best', 'Stories_Best', 'NSI_MedYearBuilt_Single',
              'ReplacementCost_Best', 'StructureValue_Best', 'OccupancyClass_Best', 'NSI_BuildingType_Single',
-             'Units_Best', 'NSI_Population_Night', 'NSI_Population_Day', 'CensusBlock', 'CensusTract', 'FootprintID']]
+             'Units_Best', 'NSI_Population_Night', 'NSI_Population_Day', 'CensusBlock', 'CensusTract', 'FootprintID',
+             'NSI_Occupancies']]
 
         # Standardize columns for imputation and R2D
         for_imputation = for_imputation.rename(columns={
@@ -776,7 +782,7 @@ class City:
         #### IMPUTE DATA USING BRAILS ####
         imputer = knn_imputer_class(inventory, n_possible_worlds=1,
                                     exclude_features=['PlanArea', 'ReplacementCost', 'StructureValue', 'OccupancyClass',
-                                                      'FootprintID', 'BuildingType'])
+                                                      'FootprintID', 'BuildingType', 'NSI_Occupancies'])
         new_inventory = imputer.impute()
 
         # Conver to pandas geodataframe
@@ -833,7 +839,8 @@ class City:
         r2d = r2d[
             ['Latitude', 'Longitude', 'PlanArea', 'NumberOfStories', 'YearBuilt', 'ReplacementCost', 'StructureValue',
              'StructureType', 'BuildingType', 'OccupancyClass', 'NumberOfUnits',
-             'NightPopulation', 'DayPopulation', 'CensusBlock', 'CensusTract', 'FootprintID', 'geometry']]
+             'NightPopulation', 'DayPopulation', 'CensusBlock', 'CensusTract', 'FootprintID',
+             'NSI_Occupancies', 'geometry']]
 
         # Keep the full occupancy class, then simplify to the Pelicun/R2D-ready categories
         r2d['OccupancyClass_Actual'] = r2d['OccupancyClass']
