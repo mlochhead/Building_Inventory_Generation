@@ -6,11 +6,13 @@ This repository is organized into several main folders.
 
 1. **`inventory_generation_functions`**: Contains Python functions used to process and synthesize inventory data from various sources.
 
-2. **`inventory_generation_hayward`**: Contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (2026).
+2. **`example_point_to_footprint`**: Contains an example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. 
 
 3. **`example_national_synthesis_workflow`**: Contains an example of the National Synthesis Workflow. To adopt this workflow other locations, input data and minor modifications to the Jupyter notebooks would be required, but the same Python functions can be used to process NSI, HIFLD, Census, and footprint data across the United States. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed.
 
-3. **`example_point_to_footprint`**: Contains an example of one part of the inventory synthesis framework, attributing point data to footprint data. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. 
+4. **`inventory_generation_city`**: Contains a production-ready, script-based version of the National Synthesis Workflow, built to run the full five-stage workflow at scale across multiple cities. `Run_Inventory_2026.py` is a complete working example that runs all five stages for six pre-configured cities (Salt Lake City, San Francisco, Washington, Seattle, Memphis, and Los Angeles). Unlike the notebook-based workflow in `example_national_synthesis_workflow`, this folder is organized around reusable `City` objects and driver scripts, so new cities can be added and run with minimal changes. See `inventory_generation_city/README.md` for full setup and usage instructions.
+
+5. **`inventory_generation_hayward`**: Contains all scripts, input data, and output data demonstrating the inventory synthesis framework for Hayward, CA. The Jupyter notebooks in this folder call functions from `inventory_generation_functions` as needed. This folder contains all code and figures used in Lochhead et al. (2026).
 
 
 ## INVENTORY SYNTHESIS FRAMEWORK
