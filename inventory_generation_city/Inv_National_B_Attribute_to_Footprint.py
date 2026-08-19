@@ -18,6 +18,10 @@ cities = [
 
 census_year = 2010
 
+# Note: the NSI 2026 methodology toggle (use_nsi_26) lives in Inv_National_A_Preprocess.py.
+# The *_nsi26_update functions are all in the preprocess/augment step, so this step (B) has no
+# NSI26-specific branch.
+
 for city in cities:
     print(f"Processing {city.city_name}")
     city.setup_national_footprint_attribution_dirs()
