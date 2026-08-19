@@ -1,5 +1,6 @@
 venv/
 inventory_env/
+.env
 
 /inventory_generation_hayward/Inventory_Outputs/
 
@@ -47,5 +48,7 @@ in_development_inventory_generation_hayward_nsi26/Input_Data/National/nsi_01_29_
 **/.ipynb_checkpoints/
 __pycache__/
 **/__pycache__/
+*.pyc
+
 .DS_Store
 **/.DS_Store
