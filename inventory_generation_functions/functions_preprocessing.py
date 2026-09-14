@@ -2048,9 +2048,9 @@ def rename_nsi_data_2026(centroids_NSI):
         'occtype':    'NSI_OccupancyClass',
         'num_story':  'NSI_NumberOfStories',
         'source':     'NSI_OrigSource',
-        'ftprntsrc':  'NSI_OrigFtptSource',
         'bid':        'NSI_BID',
         'sqft':       'NSI_TotalAreaSqFt',
+        'ftprntsqft': 'NSI_FtptAreaSqFt',
         'val_cont':   'NSI_ContentValue',
         'val_struct': 'NSI_StructureValue',
         'pop2amo65':  'NSI_PopOver65_Night',
@@ -2058,6 +2058,8 @@ def rename_nsi_data_2026(centroids_NSI):
         'pop2pmo65':  'NSI_PopOver65_Day',
         'pop2pmu65':  'NSI_PopUnder65_Day',
         'fd_id':      'NSI_fdid',
+        'ftprntsrc':  'NSI_OrigFtptSource', # MTL ADDED
+        'resunits':   'NSI_ResUnits', # MTL ADDED
     }
 
     # Fail loudly (and usefully) if the API schema drops a field we depend on
@@ -2088,7 +2090,7 @@ def rename_nsi_data_2026(centroids_NSI):
             'NSI_OrigFtptSource', 'NSI_BID', 'NSI_TotalAreaSqFt',
             'NSI_PopOver65_Night', 'NSI_PopUnder65_Night', 'NSI_Population_Night',
             'NSI_PopOver65_Day', 'NSI_PopUnder65_Day', 'NSI_Population_Day',
-            'NSI_ContentValue', 'NSI_StructureValue', 'NSI_ReplacementCost', 'geometry']
+            'NSI_ContentValue', 'NSI_StructureValue', 'NSI_ReplacementCost', 'NSI_ResUnits', 'NSI_FtptAreaSqFt', 'geometry']
     nsi = nsi[keep]
 
     return nsi

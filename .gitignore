@@ -4,6 +4,11 @@ inventory_env/
 
 /inventory_generation_hayward/Inventory_Outputs/
 
+/inventory_generation_hayward/Input_Data/National/nsi_raw.geojson
+/inventory_generation_hayward/Input_Data/National/nsi_raw.geojson
+/example_national_synthesis_workflow/Input_Data/National/nsi_raw26.geojson
+
+
 /inventory_generation_hayward/Input_Data/Census/census_api_key.txt
 /inventory_generation_city/Input_Data/
 /inventory_generation_city/Output_Data/
